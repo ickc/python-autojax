@@ -1,0 +1,17 @@
+name: Linkcheck
+on:
+  workflow_run:
+    workflows:
+      - GitHub Pages
+    types:
+      - completed
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: install linkcheck
+      run: curl -L https://github.com/ickc/bootstrapping-os-environments/raw/master/install/linkcheck.sh | bash
+    - name: run linkcheck
+      # don't check external as some sites don't like GitHub Actions
+      run: linkcheck --no-check-anchors https://ickc.github.io/python-autojax/
