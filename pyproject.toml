@@ -55,6 +55,7 @@ coloredlogs = {optional = true, version = "*"}
 # tests
 coverage = { optional = true, version = "*" }
 pytest = {optional = true, version = "*"}
+pytest-benchmark = {optional = true, version = "*"}
 
 # docs
 furo = {optional = true, version = "*"}

@@ -37,9 +37,9 @@ class TestWTildeDataInterferometer:
             "ref": ref,
         }
 
-    def test_w_tilde_data_interferometer_from_numba(self, setup_data):
-
-        """Test the w_tilde_data_interferometer_from function"""
+    @pytest.mark.benchmark(group="w_tilde_data_interferometer_from")
+    def test_w_tilde_data_interferometer_from_original(self, setup_data, benchmark):
+        """Benchmark the original w_tilde_data_interferometer_from function"""
         visibilities_real = setup_data["visibilities_real"]
         noise_map_real = setup_data["noise_map_real"]
         uv_wavelengths = setup_data["uv_wavelengths"]
@@ -48,17 +48,17 @@ class TestWTildeDataInterferometer:
 
         ref = setup_data["ref"]
 
-        result = numba.w_tilde_data_interferometer_from(
-            visibilities_real,
-            noise_map_real,
-            uv_wavelengths,
-            grid_radians_slim,
-            native_index_for_slim_index,
-        )
+        result = benchmark(original.w_tilde_data_interferometer_from,
+                           visibilities_real,
+                           noise_map_real,
+                           uv_wavelengths,
+                           grid_radians_slim,
+                           native_index_for_slim_index)
         np.testing.assert_allclose(result, ref)
 
-    def test_w_tilde_data_interferometer_from_jax(self, setup_data):
-        """Test the w_tilde_data_interferometer_from function"""
+    @pytest.mark.benchmark(group="w_tilde_data_interferometer_from")
+    def test_w_tilde_data_interferometer_from_numba(self, setup_data, benchmark):
+        """Benchmark the numba w_tilde_data_interferometer_from function"""
         visibilities_real = setup_data["visibilities_real"]
         noise_map_real = setup_data["noise_map_real"]
         uv_wavelengths = setup_data["uv_wavelengths"]
@@ -67,14 +67,33 @@ class TestWTildeDataInterferometer:
 
         ref = setup_data["ref"]
 
-        result = jax.w_tilde_data_interferometer_from(
-            visibilities_real,
-            noise_map_real,
-            uv_wavelengths,
-            grid_radians_slim,
-            native_index_for_slim_index,
-        )
+        result = benchmark(numba.w_tilde_data_interferometer_from,
+                           visibilities_real,
+                           noise_map_real,
+                           uv_wavelengths,
+                           grid_radians_slim,
+                           native_index_for_slim_index)
         np.testing.assert_allclose(result, ref)
+
+    @pytest.mark.benchmark(group="w_tilde_data_interferometer_from")
+    def test_w_tilde_data_interferometer_from_jax(self, setup_data, benchmark):
+        """Benchmark the jax w_tilde_data_interferometer_from function"""
+        visibilities_real = setup_data["visibilities_real"]
+        noise_map_real = setup_data["noise_map_real"]
+        uv_wavelengths = setup_data["uv_wavelengths"]
+        grid_radians_slim = setup_data["grid_radians_slim"]
+        native_index_for_slim_index = setup_data["native_index_for_slim_index"]
+
+        ref = setup_data["ref"]
+
+        result = benchmark(jax.w_tilde_data_interferometer_from,
+                           visibilities_real,
+                           noise_map_real,
+                           uv_wavelengths,
+                           grid_radians_slim,
+                           native_index_for_slim_index)
+        np.testing.assert_allclose(result, ref)
+
 
 class TestWTildeCurvatureInterferometer:
 
@@ -101,32 +120,47 @@ class TestWTildeCurvatureInterferometer:
             "ref": ref,
         }
 
-    def test_w_tilde_curvature_interferometer_from_numba(self, setup_data):
-        """Test the w_tilde_curvature_interferometer_from function"""
+    @pytest.mark.benchmark(group="w_tilde_curvature_interferometer_from")
+    def test_w_tilde_curvature_interferometer_from_original(self, setup_data, benchmark):
+        """Benchmark the original w_tilde_curvature_interferometer_from function"""
         noise_map_real = setup_data["noise_map_real"]
         uv_wavelengths = setup_data["uv_wavelengths"]
         grid_radians_slim = setup_data["grid_radians_slim"]
 
         ref = setup_data["ref"]
 
-        result = numba.w_tilde_curvature_interferometer_from(
-            noise_map_real,
-            uv_wavelengths,
-            grid_radians_slim,
-        )
+        result = benchmark(original.w_tilde_curvature_interferometer_from,
+                           noise_map_real,
+                           uv_wavelengths,
+                           grid_radians_slim)
         np.testing.assert_allclose(result, ref)
 
-    def test_w_tilde_curvature_interferometer_from_jax(self, setup_data):
-        """Test the w_tilde_curvature_interferometer_from function"""
+    @pytest.mark.benchmark(group="w_tilde_curvature_interferometer_from")
+    def test_w_tilde_curvature_interferometer_from_numba(self, setup_data, benchmark):
+        """Benchmark the numba w_tilde_curvature_interferometer_from function"""
         noise_map_real = setup_data["noise_map_real"]
         uv_wavelengths = setup_data["uv_wavelengths"]
         grid_radians_slim = setup_data["grid_radians_slim"]
 
         ref = setup_data["ref"]
 
-        result = jax.w_tilde_curvature_interferometer_from(
-            noise_map_real,
-            uv_wavelengths,
-            grid_radians_slim,
-        )
+        result = benchmark(numba.w_tilde_curvature_interferometer_from,
+                           noise_map_real,
+                           uv_wavelengths,
+                           grid_radians_slim)
+        np.testing.assert_allclose(result, ref)
+
+    @pytest.mark.benchmark(group="w_tilde_curvature_interferometer_from")
+    def test_w_tilde_curvature_interferometer_from_jax(self, setup_data, benchmark):
+        """Benchmark the jax w_tilde_curvature_interferometer_from function"""
+        noise_map_real = setup_data["noise_map_real"]
+        uv_wavelengths = setup_data["uv_wavelengths"]
+        grid_radians_slim = setup_data["grid_radians_slim"]
+
+        ref = setup_data["ref"]
+
+        result = benchmark(jax.w_tilde_curvature_interferometer_from,
+                           noise_map_real,
+                           uv_wavelengths,
+                           grid_radians_slim)
         np.testing.assert_allclose(result, ref)
