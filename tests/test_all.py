@@ -3,9 +3,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from autojax.original import w_tilde_data_interferometer_from
-from autojax.numba import w_tilde_data_interferometer_from as w_tilde_data_interferometer_from_numba
-from autojax.jax import w_tilde_data_interferometer_from as w_tilde_data_interferometer_from_jax
+from autojax import original, numba, jax
 
 
 class TestWTildeDataInterferometer:
@@ -23,7 +21,7 @@ class TestWTildeDataInterferometer:
         grid_radians_slim = np.random.normal(size=(M, 2))
         native_index_for_slim_index = np.random.randint(0, M, size=(M, 2))
 
-        ref = w_tilde_data_interferometer_from(
+        ref = original.w_tilde_data_interferometer_from(
             visibilities_real,
             noise_map_real,
             uv_wavelengths,
@@ -50,14 +48,14 @@ class TestWTildeDataInterferometer:
 
         ref = setup_data["ref"]
 
-        result = w_tilde_data_interferometer_from_numba(
+        result = numba.w_tilde_data_interferometer_from(
             visibilities_real,
             noise_map_real,
             uv_wavelengths,
             grid_radians_slim,
             native_index_for_slim_index,
         )
-        np.testing.assert_array_almost_equal(result, ref)
+        np.testing.assert_allclose(result, ref)
 
     def test_w_tilde_data_interferometer_from_jax(self, setup_data):
         """Test the w_tilde_data_interferometer_from function"""
@@ -69,11 +67,66 @@ class TestWTildeDataInterferometer:
 
         ref = setup_data["ref"]
 
-        result = w_tilde_data_interferometer_from_jax(
+        result = jax.w_tilde_data_interferometer_from(
             visibilities_real,
             noise_map_real,
             uv_wavelengths,
             grid_radians_slim,
             native_index_for_slim_index,
+        )
+        np.testing.assert_allclose(result, ref)
+
+class TestWTildeCurvatureInterferometer:
+
+    @pytest.fixture
+    def setup_data(self):
+        """Fixture to set up test data"""
+        np.random.seed(20250101)  # For reproducibility
+
+        N = 1000
+        M = 1000
+        noise_map_real = np.random.rand(N)
+        uv_wavelengths = np.random.rand(N, 2)
+        grid_radians_slim = np.random.rand(M, 2)
+
+        ref = original.w_tilde_curvature_interferometer_from(
+            noise_map_real,
+            uv_wavelengths,
+            grid_radians_slim,
+        )
+        return {
+            "noise_map_real": noise_map_real,
+            "uv_wavelengths": uv_wavelengths,
+            "grid_radians_slim": grid_radians_slim,
+            "ref": ref,
+        }
+
+    def test_w_tilde_curvature_interferometer_from_numba(self, setup_data):
+        """Test the w_tilde_curvature_interferometer_from function"""
+        noise_map_real = setup_data["noise_map_real"]
+        uv_wavelengths = setup_data["uv_wavelengths"]
+        grid_radians_slim = setup_data["grid_radians_slim"]
+
+        ref = setup_data["ref"]
+
+        result = numba.w_tilde_curvature_interferometer_from(
+            noise_map_real,
+            uv_wavelengths,
+            grid_radians_slim,
+        )
+        np.testing.assert_allclose(result, ref)
+
+    def test_w_tilde_curvature_interferometer_from_jax(self, setup_data):
+        """Test the w_tilde_curvature_interferometer_from function"""
+        noise_map_real = setup_data["noise_map_real"]
+        uv_wavelengths = setup_data["uv_wavelengths"]
+        grid_radians_slim = setup_data["grid_radians_slim"]
+
+        ref = setup_data["ref"]
+
+        result = jax.w_tilde_curvature_interferometer_from(
+            noise_map_real,
+            uv_wavelengths,
+            grid_radians_slim,
         )
         np.testing.assert_allclose(result, ref)
