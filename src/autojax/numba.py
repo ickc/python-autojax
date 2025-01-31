@@ -204,5 +204,5 @@ def constant_regularization_matrix_from(
     regularization_matrix = np.diag(1e-8 + regularization_coefficient * neighbors_sizes)
     for i in range(M):
         for j in range(neighbors_sizes[i]):
-            regularization_matrix[i, neighbors[i, j]] = -regularization_coefficient
+            regularization_matrix[i, neighbors[i, j]] -= regularization_coefficient
     return regularization_matrix
