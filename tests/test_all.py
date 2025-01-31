@@ -335,7 +335,7 @@ class TestConstantRegularizationMatrixFrom:
         neighbors_sizes = np.random.randint(0, N + 1, M)
         neighbors = np.full((M, N), -1, dtype=np.int64)
         for i in range(M):
-            neighbors[i, :neighbors_sizes[i]] = np.random.randint(0, M, neighbors_sizes[i])
+            neighbors[i, :neighbors_sizes[i]] = np.sort(np.random.choice(M, neighbors_sizes[i], replace=False))
 
         ref = original.constant_regularization_matrix_from(
             coefficient, neighbors, neighbors_sizes
