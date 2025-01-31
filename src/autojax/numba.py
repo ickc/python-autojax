@@ -167,7 +167,35 @@ def curvature_matrix_via_w_tilde_from(
     return mapping_matrix.T @ w_tilde @ mapping_matrix
 
 
-@jit("f8[:, ::1](f8, i8[:, ::1], i8[::1])", nopython=True, nogil=True, parallel=True)
+# @jit("i8[:, ::1](i8[:, ::1], i8[::1])", nopython=True, nogil=True, parallel=True)
+# def _idx_from_neighbors(neighbors, neighbors_sizes):
+#     M = neighbors_sizes.size
+#     L = neighbors_sizes.sum()
+#     idxs = np.empty((2, L), dtype=np.int64)
+#     k = 0
+#     for i in range(M):
+#         J = neighbors_sizes[i]
+#         idxs[0, k:k + J] = i
+#         idxs[1, k:k + J] = neighbors[i, :J]
+#         k += J
+#     return idxs
+
+
+@jit("i8[:, ::1](i8[:, ::1], i8[::1])", nopython=True, nogil=True, parallel=False)
+def _idx_from_neighbors(neighbors, neighbors_sizes):
+    M = neighbors_sizes.size
+    L = neighbors_sizes.sum()
+    idxs = np.empty((2, L), dtype=np.int64)
+    k = 0
+    for i in range(M):
+        for j in range(neighbors_sizes[i]):
+            idxs[0, k] = i
+            idxs[1, k] = neighbors[i, j]
+            k += 1
+    return idxs
+
+
+# @jit("f8[:, ::1](f8, i8[:, ::1], i8[::1])", nopython=True, nogil=True, parallel=True)
 def constant_regularization_matrix_from(
     coefficient: float,
     neighbors: np.ndarray[[int, int], np.int64],
@@ -196,13 +224,11 @@ def constant_regularization_matrix_from(
         The regularization matrix computed using Regularization where the effective regularization
         coefficient of every source pixel is the same.
     """
-    # M, N = neighbors.shape
-    M = neighbors_sizes.shape[0]
-
     regularization_coefficient = coefficient * coefficient
 
     regularization_matrix = np.diag(1e-8 + regularization_coefficient * neighbors_sizes)
-    for i in range(M):
-        for j in range(neighbors_sizes[i]):
-            regularization_matrix[i, neighbors[i, j]] -= regularization_coefficient
+
+    idxs = _idx_from_neighbors(neighbors, neighbors_sizes)
+    regularization_matrix[idxs[0], idxs[1]] -= regularization_coefficient
+
     return regularization_matrix
