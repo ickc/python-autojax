@@ -119,6 +119,7 @@ addopts = [
     '--doctest-modules',
     '--doctest-glob=\*.rst',
     '--tb=short',
+    '--benchmark-columns=mean,stddev,rounds,iterations',
 ]
 
 testpaths = [
