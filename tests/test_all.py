@@ -333,7 +333,7 @@ class TestConstantRegularizationMatrixFrom:
 
         coefficient = np.random.rand()
         neighbors_sizes = np.random.randint(0, N + 1, M)
-        neighbors = np.full(-1, (M, N), dtype=np.int64)
+        neighbors = np.full((M, N), -1, dtype=np.int64)
         for i in range(M):
             neighbors[i, :neighbors_sizes[i]] = np.random.randint(0, M, neighbors_sizes[i])
 
