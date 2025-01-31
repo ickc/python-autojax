@@ -123,3 +123,23 @@ def w_tilde_curvature_interferometer_from(
         # (1, 1, k∊N)
         jnp.square(noise_map_real).reshape(1, 1, -1)
     ).sum(2)  # sum over k
+
+
+@jax.jit
+def data_vector_from(
+    mapping_matrix: np.ndarray[tuple[int, int], np.float64],
+    dirty_image: np.ndarray[tuple[int], np.float64],
+) -> np.ndarray[tuple[int], np.float64]:
+    """
+    The `data_vector` is a 1D vector whose values are solved for by the simultaneous linear equations constructed
+    by this object.
+
+    The linear algebra is described in the paper https://arxiv.org/pdf/astro-ph/0302587.pdf), where the
+    data vector is given by equation (4) and the letter D.
+
+    If there are multiple linear objects the `data_vectors` are concatenated ensuring their values are solved
+    for simultaneously.
+
+    The calculation is described in more detail in `inversion_util.w_tilde_data_interferometer_from`.
+    """
+    return mapping_matrix.T @ dirty_image

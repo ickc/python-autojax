@@ -192,3 +192,66 @@ class TestWTildeCurvatureInterferometer:
 
         result = benchmark(run)
         np.testing.assert_allclose(result, ref)
+
+
+class TestDataVectorFrom:
+    N: int = 1000
+
+    @pytest.fixture
+    def setup_data(self):
+        """Fixture to set up test data"""
+        np.random.seed(20250101)
+        N = self.N
+
+        mapping_matrix = np.random.rand(N, N)
+        dirty_image = np.random.rand(N)
+
+        ref = original.data_vector_from(mapping_matrix, dirty_image)
+
+        return {
+            "mapping_matrix": mapping_matrix,
+            "dirty_image": dirty_image,
+            "ref": ref,
+        }
+    
+    @pytest.mark.benchmark(group="data_vector_from")
+    def test_data_vector_from_original(self, setup_data, benchmark):
+        """Benchmark the original data_vector_from function"""
+        mapping_matrix = setup_data["mapping_matrix"]
+        dirty_image = setup_data["dirty_image"]
+
+        ref = setup_data["ref"]
+
+        def run():
+            return original.data_vector_from(mapping_matrix, dirty_image)
+
+        result = benchmark(run)
+        np.testing.assert_allclose(result, ref)
+
+    @pytest.mark.benchmark(group="data_vector_from")
+    def test_data_vector_from_numba(self, setup_data, benchmark):
+        """Benchmark the numba data_vector_from function"""
+        mapping_matrix = setup_data["mapping_matrix"]
+        dirty_image = setup_data["dirty_image"]
+
+        ref = setup_data["ref"]
+
+        def run():
+            return numba.data_vector_from(mapping_matrix, dirty_image)
+
+        result = benchmark(run)
+        np.testing.assert_allclose(result, ref)
+
+    @pytest.mark.benchmark(group="data_vector_from")
+    def test_data_vector_from_jax(self, setup_data, benchmark):
+        """Benchmark the jax data_vector_from function"""
+        mapping_matrix = setup_data["mapping_matrix"]
+        dirty_image = setup_data["dirty_image"]
+
+        ref = setup_data["ref"]
+
+        def run():
+            return jax.data_vector_from(mapping_matrix, dirty_image).block_until_ready()
+
+        result = benchmark(run)
+        np.testing.assert_allclose(result, ref)
