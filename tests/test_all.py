@@ -318,3 +318,66 @@ class TestCurvatureMatrixViaWTildeFrom:
 
         result = benchmark(run)
         np.testing.assert_allclose(result, ref)
+
+
+class TestConstantRegularizationMatrixFrom:
+    M: int = 1000
+    N: int = 10
+
+    @pytest.fixture
+    def setup_data(self):
+        """Fixture to set up test data"""
+        np.random.seed(20250101)
+        M = self.M
+        N = self.N
+
+        coefficient = np.random.rand()
+        neighbors_sizes = np.random.randint(0, N + 1, M)
+        neighbors = np.full(-1, (M, N), dtype=np.int64)
+        for i in range(M):
+            neighbors[i, :neighbors_sizes[i]] = np.random.randint(0, M, neighbors_sizes[i])
+
+        ref = original.constant_regularization_matrix_from(
+            coefficient, neighbors, neighbors_sizes
+        )
+
+        return {
+            "coefficient": coefficient,
+            "neighbors": neighbors,
+            "neighbors_sizes": neighbors_sizes,
+            "ref": ref,
+        }
+
+    @pytest.mark.benchmark(group="constant_regularization_matrix_from")
+    def test_constant_regularization_matrix_from_original(self, setup_data, benchmark):
+        """Benchmark the original constant_regularization_matrix_from function"""
+        coefficient = setup_data["coefficient"]
+        neighbors = setup_data["neighbors"]
+        neighbors_sizes = setup_data["neighbors_sizes"]
+
+        ref = setup_data["ref"]
+
+        def run():
+            return original.constant_regularization_matrix_from(
+                coefficient, neighbors, neighbors_sizes
+            )
+
+        result = benchmark(run)
+        np.testing.assert_allclose(result, ref)
+
+    @pytest.mark.benchmark(group="constant_regularization_matrix_from")
+    def test_constant_regularization_matrix_from_numba(self, setup_data, benchmark):
+        """Benchmark the numba constant_regularization_matrix_from function"""
+        coefficient = setup_data["coefficient"]
+        neighbors = setup_data["neighbors"]
+        neighbors_sizes = setup_data["neighbors_sizes"]
+
+        ref = setup_data["ref"]
+
+        def run():
+            return numba.constant_regularization_matrix_from(
+                coefficient, neighbors, neighbors_sizes
+            )
+
+        result = benchmark(run)
+        np.testing.assert_allclose(result, ref)

@@ -175,3 +175,46 @@ def curvature_matrix_via_w_tilde_from(
     """
 
     return np.dot(mapping_matrix.T, np.dot(w_tilde, mapping_matrix))
+
+
+def constant_regularization_matrix_from(
+    coefficient: float, neighbors: np.ndarray, neighbors_sizes: np.ndarray
+) -> np.ndarray:
+    """
+    From the pixel-neighbors array, setup the regularization matrix using the instance regularization scheme.
+
+    A complete description of regularizatin and the `regularization_matrix` can be found in the `Regularization`
+    class in the module `autoarray.inversion.regularization`.
+
+    Parameters
+    ----------
+    coefficient
+        The regularization coefficients which controls the degree of smoothing of the inversion reconstruction.
+    neighbors
+        An array of length (total_pixels) which provides the index of all neighbors of every pixel in
+        the Voronoi grid (entries of -1 correspond to no neighbor).
+    neighbors_sizes
+        An array of length (total_pixels) which gives the number of neighbors of every pixel in the
+        Voronoi grid.
+
+    Returns
+    -------
+    np.ndarray
+        The regularization matrix computed using Regularization where the effective regularization
+        coefficient of every source pixel is the same.
+    """
+
+    parameters = len(neighbors)
+
+    regularization_matrix = np.zeros(shape=(parameters, parameters))
+
+    regularization_coefficient = coefficient**2.0
+
+    for i in range(parameters):
+        regularization_matrix[i, i] += 1e-8
+        for j in range(neighbors_sizes[i]):
+            neighbor_index = neighbors[i, j]
+            regularization_matrix[i, i] += regularization_coefficient
+            regularization_matrix[i, neighbor_index] -= regularization_coefficient
+
+    return regularization_matrix
