@@ -7,14 +7,16 @@ from autojax import original, numba, jax
 
 
 class TestWTildeDataInterferometer:
-    
+    M = 1000
+    N = 1000
+
     @pytest.fixture
     def setup_data(self):
         """Fixture to set up test data"""
         np.random.seed(20250101)  # For reproducibility
+        M = self.M
+        N = self.N
 
-        N = 1000
-        M = 1000
         visibilities_real = np.random.normal(size=N)
         noise_map_real = np.random.normal(size=N)
         uv_wavelengths = np.random.normal(size=(N, 2))
@@ -48,12 +50,16 @@ class TestWTildeDataInterferometer:
 
         ref = setup_data["ref"]
 
-        result = benchmark(original.w_tilde_data_interferometer_from,
-                           visibilities_real,
-                           noise_map_real,
-                           uv_wavelengths,
-                           grid_radians_slim,
-                           native_index_for_slim_index)
+        def run():
+            return original.w_tilde_data_interferometer_from(
+                visibilities_real,
+                noise_map_real,
+                uv_wavelengths,
+                grid_radians_slim,
+                native_index_for_slim_index,
+            )
+
+        result = benchmark(run)
         np.testing.assert_allclose(result, ref)
 
     @pytest.mark.benchmark(group="w_tilde_data_interferometer_from")
@@ -67,12 +73,16 @@ class TestWTildeDataInterferometer:
 
         ref = setup_data["ref"]
 
-        result = benchmark(numba.w_tilde_data_interferometer_from,
-                           visibilities_real,
-                           noise_map_real,
-                           uv_wavelengths,
-                           grid_radians_slim,
-                           native_index_for_slim_index)
+        def run():
+            return numba.w_tilde_data_interferometer_from(
+                visibilities_real,
+                noise_map_real,
+                uv_wavelengths,
+                grid_radians_slim,
+                native_index_for_slim_index,
+            )
+
+        result = benchmark(run)
         np.testing.assert_allclose(result, ref)
 
     @pytest.mark.benchmark(group="w_tilde_data_interferometer_from")
@@ -86,24 +96,30 @@ class TestWTildeDataInterferometer:
 
         ref = setup_data["ref"]
 
-        result = benchmark(jax.w_tilde_data_interferometer_from,
-                           visibilities_real,
-                           noise_map_real,
-                           uv_wavelengths,
-                           grid_radians_slim,
-                           native_index_for_slim_index)
+        def run():
+            return jax.w_tilde_data_interferometer_from(
+                visibilities_real,
+                noise_map_real,
+                uv_wavelengths,
+                grid_radians_slim,
+                native_index_for_slim_index
+            ).block_until_ready()
+
+        result = benchmark(run)
         np.testing.assert_allclose(result, ref)
 
 
 class TestWTildeCurvatureInterferometer:
+    M = 200
+    N = 100
 
     @pytest.fixture
     def setup_data(self):
         """Fixture to set up test data"""
         np.random.seed(20250101)  # For reproducibility
+        M = self.M
+        N = self.N
 
-        N = 1000
-        M = 1000
         noise_map_real = np.random.rand(N)
         uv_wavelengths = np.random.rand(N, 2)
         grid_radians_slim = np.random.rand(M, 2)
@@ -129,10 +145,14 @@ class TestWTildeCurvatureInterferometer:
 
         ref = setup_data["ref"]
 
-        result = benchmark(original.w_tilde_curvature_interferometer_from,
-                           noise_map_real,
-                           uv_wavelengths,
-                           grid_radians_slim)
+        def run():
+            return original.w_tilde_curvature_interferometer_from(
+                noise_map_real,
+                uv_wavelengths,
+                grid_radians_slim,
+            )
+
+        result = benchmark(run)
         np.testing.assert_allclose(result, ref)
 
     @pytest.mark.benchmark(group="w_tilde_curvature_interferometer_from")
@@ -144,10 +164,14 @@ class TestWTildeCurvatureInterferometer:
 
         ref = setup_data["ref"]
 
-        result = benchmark(numba.w_tilde_curvature_interferometer_from,
-                           noise_map_real,
-                           uv_wavelengths,
-                           grid_radians_slim)
+        def run():
+            return numba.w_tilde_curvature_interferometer_from(
+                noise_map_real,
+                uv_wavelengths,
+                grid_radians_slim,
+            )
+
+        result = benchmark(run)
         np.testing.assert_allclose(result, ref)
 
     @pytest.mark.benchmark(group="w_tilde_curvature_interferometer_from")
@@ -159,8 +183,12 @@ class TestWTildeCurvatureInterferometer:
 
         ref = setup_data["ref"]
 
-        result = benchmark(jax.w_tilde_curvature_interferometer_from,
-                           noise_map_real,
-                           uv_wavelengths,
-                           grid_radians_slim)
+        def run():
+            return jax.w_tilde_curvature_interferometer_from(
+                noise_map_real,
+                uv_wavelengths,
+                grid_radians_slim
+            ).block_until_ready()
+
+        result = benchmark(run)
         np.testing.assert_allclose(result, ref)
