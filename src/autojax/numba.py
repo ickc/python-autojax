@@ -136,3 +136,32 @@ def data_vector_from(
     The calculation is described in more detail in `inversion_util.w_tilde_data_interferometer_from`.
     """
     return mapping_matrix.T @ dirty_image
+
+
+@jit("f8[:, ::1](f8[:, ::1], f8[:, ::1])", nopython=True, nogil=True, parallel=True)
+def curvature_matrix_via_w_tilde_from(
+    w_tilde: np.ndarray[tuple[int, int], np.float64],
+    mapping_matrix: np.ndarray[tuple[int, int], np.float64],
+) -> np.ndarray[tuple[int, int], np.float64]:
+    """
+    Returns the curvature matrix `F` (see Warren & Dye 2003) from `w_tilde`.
+
+    The dimensions of `w_tilde` are [image_pixels, image_pixels], meaning that for datasets with many image pixels
+    this matrix can take up 10's of GB of memory. The calculation of the `curvature_matrix` via this function will
+    therefore be very slow, and the method `curvature_matrix_via_w_tilde_curvature_preload_imaging_from` should be used
+    instead.
+
+    Parameters
+    ----------
+    w_tilde
+        A matrix of dimensions [image_pixels, image_pixels] that encodes the convolution or NUFFT of every image pixel
+        pair on the noise map.
+    mapping_matrix
+        The matrix representing the mappings between sub-grid pixels and pixelization pixels.
+
+    Returns
+    -------
+    ndarray
+        The curvature matrix `F` (see Warren & Dye 2003).
+    """
+    return mapping_matrix.T @ w_tilde @ mapping_matrix

@@ -255,3 +255,66 @@ class TestDataVectorFrom:
 
         result = benchmark(run)
         np.testing.assert_allclose(result, ref)
+
+
+class TestCurvatureMatrixViaWTildeFrom:
+    N: int = 1000
+
+    @pytest.fixture
+    def setup_data(self):
+        """Fixture to set up test data"""
+        np.random.seed(20250101)
+        N = self.N
+
+        w_tilde = np.random.rand(N, N)
+        mapping_matrix = np.random.rand(N, N)
+
+        ref = original.curvature_matrix_via_w_tilde_from(w_tilde, mapping_matrix)
+
+        return {
+            "w_tilde": w_tilde,
+            "mapping_matrix": mapping_matrix,
+            "ref": ref,
+        }
+    
+    @pytest.mark.benchmark(group="curvature_matrix_via_w_tilde_from")
+    def test_curvature_matrix_via_w_tilde_from_original(self, setup_data, benchmark):
+        """Benchmark the original curvature_matrix_via_w_tilde_from function"""
+        w_tilde = setup_data["w_tilde"]
+        mapping_matrix = setup_data["mapping_matrix"]
+
+        ref = setup_data["ref"]
+
+        def run():
+            return original.curvature_matrix_via_w_tilde_from(w_tilde, mapping_matrix)
+
+        result = benchmark(run)
+        np.testing.assert_allclose(result, ref)
+
+    @pytest.mark.benchmark(group="curvature_matrix_via_w_tilde_from")
+    def test_curvature_matrix_via_w_tilde_from_numba(self, setup_data, benchmark):
+        """Benchmark the numba curvature_matrix_via_w_tilde_from function"""
+        w_tilde = setup_data["w_tilde"]
+        mapping_matrix = setup_data["mapping_matrix"]
+
+        ref = setup_data["ref"]
+
+        def run():
+            return numba.curvature_matrix_via_w_tilde_from(w_tilde, mapping_matrix)
+
+        result = benchmark(run)
+        np.testing.assert_allclose(result, ref)
+
+    @pytest.mark.benchmark(group="curvature_matrix_via_w_tilde_from")
+    def test_curvature_matrix_via_w_tilde_from_jax(self, setup_data, benchmark):
+        """Benchmark the jax curvature_matrix_via_w_tilde_from function"""
+        w_tilde = setup_data["w_tilde"]
+        mapping_matrix = setup_data["mapping_matrix"]
+
+        ref = setup_data["ref"]
+
+        def run():
+            return jax.curvature_matrix_via_w_tilde_from(w_tilde, mapping_matrix).block_until_ready()
+
+        result = benchmark(run)
+        np.testing.assert_allclose(result, ref)
