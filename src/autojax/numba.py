@@ -167,21 +167,7 @@ def curvature_matrix_via_w_tilde_from(
     return mapping_matrix.T @ w_tilde @ mapping_matrix
 
 
-@jit("i8[::1](i8[:, ::1], i8[::1])", nopython=True, nogil=True, parallel=False)
-def _idx_from_neighbors(neighbors, neighbors_sizes):
-    M = neighbors_sizes.size
-    L = neighbors_sizes.sum()
-
-    idx = np.empty(L, dtype=np.int64)
-    k = 0
-    for i in range(M):
-        iM = i * M
-        for j in range(neighbors_sizes[i]):
-            idx[k] = iM + neighbors[i, j]
-            k += 1
-    return idx
-
-
+@jit("f8[:, ::1](f8, i8[:, ::1], i8[::1])", nopython=True, nogil=True, parallel=False)
 def constant_regularization_matrix_from(
     coefficient: float,
     neighbors: np.ndarray[[int, int], np.int64],
@@ -210,11 +196,11 @@ def constant_regularization_matrix_from(
         The regularization matrix computed using Regularization where the effective regularization
         coefficient of every source pixel is the same.
     """
+    M = neighbors_sizes.size
     regularization_coefficient = coefficient * coefficient
 
     regularization_matrix = np.diag(1e-8 + regularization_coefficient * neighbors_sizes)
-
-    idx = _idx_from_neighbors(neighbors, neighbors_sizes)
-    regularization_matrix.reshape(-1, 1)[idx] -= regularization_coefficient
-
+    for i in range(M):
+        for j in range(neighbors_sizes[i]):
+            regularization_matrix[i, neighbors[i, j]] -= regularization_coefficient
     return regularization_matrix
