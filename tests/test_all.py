@@ -381,3 +381,20 @@ class TestConstantRegularizationMatrixFrom:
 
         result = benchmark(run)
         np.testing.assert_allclose(result, ref)
+
+    @pytest.mark.benchmark(group="constant_regularization_matrix_from")
+    def test_constant_regularization_matrix_from_jax(self, setup_data, benchmark):
+        """Benchmark the jax constant_regularization_matrix_from function"""
+        coefficient = setup_data["coefficient"]
+        neighbors = setup_data["neighbors"]
+        neighbors_sizes = setup_data["neighbors_sizes"]
+
+        ref = setup_data["ref"]
+
+        def run():
+            return jax.constant_regularization_matrix_from(
+                coefficient, neighbors, neighbors_sizes
+            ).block_until_ready()
+
+        result = benchmark(run)
+        np.testing.assert_allclose(result, ref)
