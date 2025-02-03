@@ -13,15 +13,15 @@ class TestWTildeDataInterferometer:
     @pytest.fixture
     def setup_data(self):
         """Fixture to set up test data"""
-        np.random.seed(20250101)  # For reproducibility
+        rng = np.random.default_rng(20250101)  # Use Generator with seed
         M = self.M
         N = self.N
 
-        visibilities_real = np.random.normal(size=N)
-        noise_map_real = np.random.normal(size=N)
-        uv_wavelengths = np.random.normal(size=(N, 2))
-        grid_radians_slim = np.random.normal(size=(M, 2))
-        native_index_for_slim_index = np.random.randint(0, M, size=(M, 2))
+        visibilities_real = rng.normal(size=N)
+        noise_map_real = rng.normal(size=N)
+        uv_wavelengths = rng.normal(size=(N, 2))
+        grid_radians_slim = rng.normal(size=(M, 2))
+        native_index_for_slim_index = rng.integers(0, M, size=(M, 2))
 
         ref = original.w_tilde_data_interferometer_from(
             visibilities_real,
@@ -116,13 +116,13 @@ class TestWTildeCurvatureInterferometer:
     @pytest.fixture
     def setup_data(self):
         """Fixture to set up test data"""
-        np.random.seed(20250101)  # For reproducibility
+        rng = np.random.default_rng(20250101)  # Use Generator with seed
         M = self.M
         N = self.N
 
-        noise_map_real = np.random.rand(N)
-        uv_wavelengths = np.random.rand(N, 2)
-        grid_radians_slim = np.random.rand(M, 2)
+        noise_map_real = rng.random(N)
+        uv_wavelengths = rng.random((N, 2))
+        grid_radians_slim = rng.random((M, 2))
 
         ref = original.w_tilde_curvature_interferometer_from(
             noise_map_real,
@@ -200,11 +200,11 @@ class TestDataVectorFrom:
     @pytest.fixture
     def setup_data(self):
         """Fixture to set up test data"""
-        np.random.seed(20250101)
+        rng = np.random.default_rng(20250101)  # Use Generator with seed
         N = self.N
 
-        mapping_matrix = np.random.rand(N, N)
-        dirty_image = np.random.rand(N)
+        mapping_matrix = rng.random((N, N))
+        dirty_image = rng.random(N)
 
         ref = original.data_vector_from(mapping_matrix, dirty_image)
 
@@ -213,7 +213,7 @@ class TestDataVectorFrom:
             "dirty_image": dirty_image,
             "ref": ref,
         }
-    
+
     @pytest.mark.benchmark(group="data_vector_from")
     def test_data_vector_from_original(self, setup_data, benchmark):
         """Benchmark the original data_vector_from function"""
@@ -263,11 +263,11 @@ class TestCurvatureMatrixViaWTildeFrom:
     @pytest.fixture
     def setup_data(self):
         """Fixture to set up test data"""
-        np.random.seed(20250101)
+        rng = np.random.default_rng(20250101)  # Use Generator with seed
         N = self.N
 
-        w_tilde = np.random.rand(N, N)
-        mapping_matrix = np.random.rand(N, N)
+        w_tilde = rng.random((N, N))
+        mapping_matrix = rng.random((N, N))
 
         ref = original.curvature_matrix_via_w_tilde_from(w_tilde, mapping_matrix)
 
@@ -276,7 +276,7 @@ class TestCurvatureMatrixViaWTildeFrom:
             "mapping_matrix": mapping_matrix,
             "ref": ref,
         }
-    
+
     @pytest.mark.benchmark(group="curvature_matrix_via_w_tilde_from")
     def test_curvature_matrix_via_w_tilde_from_original(self, setup_data, benchmark):
         """Benchmark the original curvature_matrix_via_w_tilde_from function"""
@@ -327,15 +327,15 @@ class TestConstantRegularizationMatrixFrom:
     @pytest.fixture
     def setup_data(self):
         """Fixture to set up test data"""
-        np.random.seed(20250101)
+        rng = np.random.default_rng(20250101)  # Use Generator with seed
         M = self.M
         N = self.N
 
-        coefficient = np.random.rand()
-        neighbors_sizes = np.random.randint(0, N + 1, M)
+        coefficient = rng.random()
+        neighbors_sizes = rng.integers(0, N + 1, M)
         neighbors = np.full((M, N), -1, dtype=np.int64)
         for i in range(M):
-            neighbors[i, :neighbors_sizes[i]] = np.sort(np.random.choice(M, neighbors_sizes[i], replace=False))
+            neighbors[i, :neighbors_sizes[i]] = np.sort(rng.choice(M, neighbors_sizes[i], replace=False))
 
         ref = original.constant_regularization_matrix_from(
             coefficient, neighbors, neighbors_sizes
