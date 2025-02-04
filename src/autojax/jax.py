@@ -178,31 +178,52 @@ def curvature_matrix_via_w_tilde_from(
     return mapping_matrix.T @ w_tilde @ mapping_matrix
 
 
-@numba.jit("i8[:, ::1](i8[:, ::1], i8[::1])", nopython=True, nogil=True, parallel=False)
-def _idxs_from_neighbors(neighbors, neighbors_sizes):
-    M = neighbors_sizes.size
-    L = neighbors_sizes.sum()
+@jax.jit
+def _idxs_from_neighbors(
+    neighbors: np.ndarray[[int, int], np.int64],
+) -> np.ndarray[[int, int], np.float64]:
+    """
+    Converts a neighbors array into a 2D index array for facilitating vectorized matrix updates.
 
-    idx = np.empty((2, L), dtype=np.int64)
-    k = 0
-    for i in range(M):
-        for j in range(neighbors_sizes[i]):
-            idx[0, k] = i
-            idx[1, k] = neighbors[i, j]
-            k += 1
-    return idx
+    The original neighbors array defines adjacency relationships where:
+        for i in range(M):
+            for j in range(neighbors_sizes[i]):
+                k = neighbors[i, j]
+                if k != -1:  # neighbors_sizes guarantees that k will not be -1
+                    mat[i, k] = ...
+
+    This function reformulates the indexing pattern by returning a 2D array `idxs`, enabling:
+        for k in range(idxs.shape[1]):
+            if idxs[1, k] < M:  # this is no longer guaranteed as we aren't using neighbors_sizes
+                mat[idxs[0, k], idxs[1, k]] = ...
+
+    This transformation allows an alternative, more structured way to iterate over the indices
+    rather than directly using the original neighbors array.
+
+    **Handling Missing Neighbors:**
+    Entries of `-1` in `neighbors` (indicating no neighbor) are replaced with an out-of-bounds index.
+    This ensures that JAX can efficiently drop these entries during matrix updates.
+
+    Parameters
+    ----------
+    neighbors : np.ndarray of shape (M, N)
+        A 2D array where each row lists the neighboring indices of a pixel in the Voronoi grid.
+        Entries of `-1` indicate the absence of a neighbor.
+
+    Returns
+    -------
+    np.ndarray of shape (2, M * N)
+        A 2D array of indices `idxs` that establishes the identity:
+        `matrix[i, neighbors[i, j]] == matrix[idxs[0, k], idxs[1, k]]`,
+        relating the original neighbors format to the transformed format.
+    """
+    M, N = neighbors.shape
+    OUT_OF_BOUND_IDX = M
+    neighbors = neighbors.flatten()
+    return jnp.stack((jnp.repeat(jnp.arange(M), N), jnp.where(neighbors == -1, OUT_OF_BOUND_IDX, neighbors)))
 
 
 @jax.jit
-def _constant_regularization_matrix_from(
-    coefficient: float,
-    neighbor_idxs: np.ndarray[[int, int], np.int64],
-    neighbors_sizes: np.ndarray[[int], np.int64],
-) -> np.ndarray[[int, int], np.float64]:
-    regularization_coefficient = coefficient * coefficient
-    return jnp.diag(1e-8 + regularization_coefficient * neighbors_sizes).at[neighbor_idxs[0], neighbor_idxs[1]].add(-regularization_coefficient)
-
-
 def constant_regularization_matrix_from(
     coefficient: float,
     neighbors: np.ndarray[[int, int], np.int64],
@@ -231,4 +252,9 @@ def constant_regularization_matrix_from(
         The regularization matrix computed using Regularization where the effective regularization
         coefficient of every source pixel is the same.
     """
-    return _constant_regularization_matrix_from(coefficient, _idxs_from_neighbors(neighbors, neighbors_sizes), neighbors_sizes)
+    regularization_coefficient = coefficient * coefficient
+
+    neighbor_idxs = _idxs_from_neighbors(neighbors)
+    mat = jnp.diag(1e-8 + regularization_coefficient * neighbors_sizes)
+    mat = mat.at[neighbor_idxs[0], neighbor_idxs[1]].add(-regularization_coefficient, mode="drop", unique_indices=True)
+    return mat
