@@ -218,3 +218,45 @@ def constant_regularization_matrix_from(
             regularization_matrix[i, neighbor_index] -= regularization_coefficient
 
     return regularization_matrix
+
+
+def reconstruction_positive_negative_from(
+    data_vector: np.ndarray,
+    curvature_reg_matrix: np.ndarray,
+):
+    """
+    Solve the linear system [F + reg_coeff*H] S = D -> S = [F + reg_coeff*H]^-1 D given by equation (12)
+    of https://arxiv.org/pdf/astro-ph/0302587.pdf
+
+    S is the vector of reconstructed inversion values.
+
+    This reconstruction uses a linear algebra solver that allows for negative and positives values in the solution.
+    By allowing negative values, the solver is efficient, but there are many inference problems where negative values
+    are nonphysical or undesirable.
+
+    This function checks that the solution does not give a linear algebra error (e.g. because the input matrix is
+    not positive-definitive).
+
+    It also explicitly checks solutions where all reconstructed values go to the same value, and raises an exception if
+    this occurs. This solution occurs in many scenarios when it is clear not a valid solution, and therefore is checked
+    for and removed.
+
+    Parameters
+    ----------
+    data_vector
+        The `data_vector` D which is solved for.
+    curvature_reg_matrix
+        The sum of the curvature and regularization matrices.
+    mapper_param_range_list
+        A list of lists, where each list contains the range of values in the solution vector (reconstruction) that
+        correspond to values that are part of a mapper's mesh.
+    force_check_reconstruction
+        If `True`, the reconstruction is forced to check for solutions where all reconstructed values go to the same
+        value irrespective of the configuration file value.
+
+    Returns
+    -------
+    curvature_reg_matrix
+        The curvature_matrix plus regularization matrix, overwriting the curvature_matrix in memory.
+    """
+    return np.linalg.solve(curvature_reg_matrix, data_vector)

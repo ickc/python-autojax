@@ -5,6 +5,42 @@ import pytest
 
 from autojax import original, numba, jax
 
+def create_M(n):
+    """
+    Create the n x n symmetric tridiagonal matrix M defined by:
+      M[i, i] = 2 for i = 0,...,n-1,
+      M[i, i+1] = M[i+1, i] = -1 for i = 0,...,n-2.
+    """
+    # Initialize an n x n matrix filled with zeros
+    M = np.zeros((n, n))
+
+    # Set the diagonal entries to 2
+    np.fill_diagonal(M, 2)
+
+    # Set the sub- and super-diagonals to -1
+    for i in range(n - 1):
+        M[i, i + 1] = -1
+        M[i + 1, i] = -1
+
+    return M
+
+
+def create_M_inv(n):
+    """
+    Create the inverse of the n x n matrix M with entries:
+      (M_inv)_{ij} = (min(i, j) * (n + 1 - max(i, j))) / (n + 1)
+    where i, j are 1-indexed. Adjust indices for Python (0-indexed).
+    """
+    M_inv = np.zeros((n, n))
+
+    # i and j will range from 0 to n-1, corresponding to i+1 and j+1 in the formula.
+    for i in range(n):
+        for j in range(n):
+            # Convert indices to 1-indexed values
+            ip1, jp1 = i + 1, j + 1
+            M_inv[i, j] = (min(ip1, jp1) * (n + 1 - max(ip1, jp1))) / (n + 1)
+    return M_inv
+
 
 class TestWTildeDataInterferometer:
     M = 1000
@@ -394,6 +430,76 @@ class TestConstantRegularizationMatrixFrom:
         def run():
             return jax.constant_regularization_matrix_from(
                 coefficient, neighbors, neighbors_sizes
+            ).block_until_ready()
+
+        result = benchmark(run)
+        np.testing.assert_allclose(result, ref)
+
+
+class TestReconstructionPositiveNegativeFrom:
+    M = 1000
+
+    @pytest.fixture
+    def setup_data(self):
+        """Fixture to set up test data"""
+        rng = np.random.default_rng(20250101)  # Use Generator with seed
+        M = self.M
+
+        data_vector = rng.random(M)
+        curvature_matrix = create_M(M)
+        inv = create_M_inv(M)
+
+        ref = inv @ data_vector
+
+        return {
+            "data_vector": data_vector,
+            "curvature_matrix": curvature_matrix,
+            "ref": ref,
+        }
+    
+    @pytest.mark.benchmark(group="reconstruction_positive_negative_from")
+    def test_reconstruction_positive_negative_from_original(self, setup_data, benchmark):
+        """Benchmark the original reconstruction_positive_negative_from function"""
+        data_vector = setup_data["data_vector"]
+        curvature_matrix = setup_data["curvature_matrix"]
+
+        ref = setup_data["ref"]
+
+        def run():
+            return original.reconstruction_positive_negative_from(
+                data_vector, curvature_matrix
+            )
+
+        result = benchmark(run)
+        np.testing.assert_allclose(result, ref)
+
+    @pytest.mark.benchmark(group="reconstruction_positive_negative_from")
+    def test_reconstruction_positive_negative_from_numba(self, setup_data, benchmark):
+        """Benchmark the numba reconstruction_positive_negative_from function"""
+        data_vector = setup_data["data_vector"]
+        curvature_matrix = setup_data["curvature_matrix"]
+
+        ref = setup_data["ref"]
+
+        def run():
+            return numba.reconstruction_positive_negative_from(
+                data_vector, curvature_matrix
+            )
+
+        result = benchmark(run)
+        np.testing.assert_allclose(result, ref)
+
+    @pytest.mark.benchmark(group="reconstruction_positive_negative_from")
+    def test_reconstruction_positive_negative_from_jax(self, setup_data, benchmark):
+        """Benchmark the jax reconstruction_positive_negative_from function"""
+        data_vector = setup_data["data_vector"]
+        curvature_matrix = setup_data["curvature_matrix"]
+
+        ref = setup_data["ref"]
+
+        def run():
+            return jax.reconstruction_positive_negative_from(
+                data_vector, curvature_matrix
             ).block_until_ready()
 
         result = benchmark(run)
