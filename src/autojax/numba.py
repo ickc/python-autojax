@@ -135,7 +135,7 @@ def data_vector_from(
 
     The calculation is described in more detail in `inversion_util.w_tilde_data_interferometer_from`.
     """
-    return mapping_matrix.T @ dirty_image
+    return dirty_image @ mapping_matrix
 
 
 @jit("f8[:, ::1](f8[:, ::1], f8[:, ::1])", nopython=True, nogil=True, parallel=True)
