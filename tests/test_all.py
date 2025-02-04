@@ -504,3 +504,58 @@ class TestReconstructionPositiveNegativeFrom:
 
         result = benchmark(run)
         np.testing.assert_allclose(result, ref)
+
+# noise_normalization_complex_from
+
+class TestNoiseNormalizationComplexFrom:
+    M = 100
+
+    @pytest.fixture
+    def setup_data(self):
+        """Fixture to set up test data"""
+        rng = np.random.default_rng(20250101)  # Use Generator with seed
+        M = self.M
+
+        real_part = rng.random(M)
+        imaginary_part = rng.random(M)
+
+        noise_map = real_part + 1j * imaginary_part
+
+        ref = original.noise_normalization_complex_from(
+            noise_map
+        )
+
+        return {
+            "noise_map": noise_map,
+            "ref": ref,
+        }
+
+    @pytest.mark.benchmark(group="noise_normalization_complex_from")
+    def test_noise_normalization_complex_from_original(self, setup_data, benchmark):
+        """Benchmark the original noise_normalization_complex_from function"""
+        noise_map = setup_data["noise_map"]
+
+        ref = setup_data["ref"]
+
+        def run():
+            return original.noise_normalization_complex_from(
+                noise_map
+            )
+
+        result = benchmark(run)
+        np.testing.assert_allclose(result, ref)
+
+    @pytest.mark.benchmark(group="noise_normalization_complex_from")
+    def test_noise_normalization_complex_from_numba(self, setup_data, benchmark):
+        """Benchmark the numba noise_normalization_complex_from function"""
+        noise_map = setup_data["noise_map"]
+
+        ref = setup_data["ref"]
+
+        def run():
+            return numba.noise_normalization_complex_from(
+                noise_map
+            )
+
+        result = benchmark(run)
+        np.testing.assert_allclose(result, ref)

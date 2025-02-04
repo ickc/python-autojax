@@ -247,3 +247,22 @@ def reconstruction_positive_negative_from(
         The curvature_matrix plus regularization matrix, overwriting the curvature_matrix in memory.
     """
     return np.linalg.solve(curvature_reg_matrix, data_vector)
+
+
+@jit("f8(c16[::1])", nopython=True, nogil=True, parallel=True)
+def noise_normalization_complex_from(
+    noise_map: np.ndarray[[int], np.complex128],
+) -> float:
+    """
+    Returns the noise-map normalization terms of a complex noise-map, summing the noise_map value in every pixel as:
+
+    [Noise_Term] = sum(log(2*pi*[Noise]**2.0))
+
+    Parameters
+    ----------
+    noise_map
+        The masked noise-map of the dataset.
+    """
+    noise_normalization_real = np.sum(np.log(2 * np.pi * noise_map.real**2.0))
+    noise_normalization_imag = np.sum(np.log(2 * np.pi * noise_map.imag**2.0))
+    return noise_normalization_real + noise_normalization_imag
