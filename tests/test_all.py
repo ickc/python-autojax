@@ -456,7 +456,7 @@ class TestReconstructionPositiveNegativeFrom:
             "curvature_matrix": curvature_matrix,
             "ref": ref,
         }
-    
+
     @pytest.mark.benchmark(group="reconstruction_positive_negative_from")
     def test_reconstruction_positive_negative_from_original(self, setup_data, benchmark):
         """Benchmark the original reconstruction_positive_negative_from function"""
@@ -556,6 +556,21 @@ class TestNoiseNormalizationComplexFrom:
             return numba.noise_normalization_complex_from(
                 noise_map
             )
+
+        result = benchmark(run)
+        np.testing.assert_allclose(result, ref)
+
+    @pytest.mark.benchmark(group="noise_normalization_complex_from")
+    def test_noise_normalization_complex_from_jax(self, setup_data, benchmark):
+        """Benchmark the jax noise_normalization_complex_from function"""
+        noise_map = setup_data["noise_map"]
+
+        ref = setup_data["ref"]
+
+        def run():
+            return jax.noise_normalization_complex_from(
+                noise_map
+            ).block_until_ready()
 
         result = benchmark(run)
         np.testing.assert_allclose(result, ref)

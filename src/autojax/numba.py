@@ -249,7 +249,7 @@ def reconstruction_positive_negative_from(
     return np.linalg.solve(curvature_reg_matrix, data_vector)
 
 
-@jit("f8(c16[::1])", nopython=True, nogil=True, parallel=True)
+@jit("f8(c16[::1])", nopython=True, nogil=True, parallel=False)
 def noise_normalization_complex_from(
     noise_map: np.ndarray[[int], np.complex128],
 ) -> float:
@@ -263,6 +263,4 @@ def noise_normalization_complex_from(
     noise_map
         The masked noise-map of the dataset.
     """
-    noise_normalization_real = np.sum(np.log(2 * np.pi * noise_map.real**2.0))
-    noise_normalization_imag = np.sum(np.log(2 * np.pi * noise_map.imag**2.0))
-    return noise_normalization_real + noise_normalization_imag
+    return np.log((2.0 * np.pi) * np.square(noise_map.view(np.float64))).sum()
