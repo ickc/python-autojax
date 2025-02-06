@@ -156,7 +156,7 @@ def w_tilde_curvature_interferometer_from(
     uv_wavelengths: np.ndarray[tuple[int, int], np.float64],
     grid_radians_slim: np.ndarray[tuple[int, int], np.float64],
 ) -> np.ndarray[tuple[int, int], np.float64]:
-    """
+    r"""
     The matrix w_tilde is a matrix of dimensions [image_pixels, image_pixels] that encodes the NUFFT of every pair of
     image pixels given the noise map. This can be used to efficiently compute the curvature matrix via the mappings
     between image and source pixels, in a way that omits having to perform the NUFFT on every individual source pixel.
@@ -166,6 +166,9 @@ def w_tilde_curvature_interferometer_from(
     making it impossible to store in memory and its use in linear algebra calculations extremely. The method
     `w_tilde_preload_interferometer_from` describes a compressed representation that overcomes this hurdles. It is
     advised `w_tilde` and this method are only used for testing.
+
+    Note that the current implementation does not take advantage of the fact that w_tilde is symmetric,
+    due to the use of vectorized operations.
 
     .. math::
         W̃_{ij} = \sum_{k=1}^N \frac{1}{n_k^2} \cos(2\pi[(g_{i1} - g_{j1})u_{k0} + (g_{i0} - g_{j0})u_{k1}])
