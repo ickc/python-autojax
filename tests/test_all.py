@@ -134,7 +134,7 @@ def gen_data_vector(N: int) -> np.ndarray[tuple[int], np.float64]:
 def gen_noise_map(N: int) -> np.ndarray[tuple[int], np.complex128]:
     """Generate random real noise map of size N."""
     rng = np.random.default_rng(deterministic_seed("noise_map", N))
-    return rng.random(N) + 1j * rng.random(N)
+    return rng.random(2 * N).view(np.complex128)
 
 
 class TestMask2DCircularFrom:
