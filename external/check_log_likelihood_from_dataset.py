@@ -70,6 +70,10 @@ def external():
 
 def main() -> float:
     dirty_image, w_tilde, noise_map, mapping_matrix, neighbors, neighbors_sizes = external()
+    for name in ("dirty_image", "w_tilde", "noise_map", "mapping_matrix", "neighbors", "neighbors_sizes"):
+        print("=========", name, "=========")
+        var = np.array(locals()[name])
+        print(np.info(var))
     log_likelihood = log_likelihood_function(
         dirty_image,
         w_tilde,
@@ -83,5 +87,6 @@ def main() -> float:
 
 if __name__ == "__main__":
     log_likelihood = main()
+    print("=========", "log_likelihood", "=========")
     print(log_likelihood)
     np.testing.assert_allclose(log_likelihood, -3028.5513427463716)
