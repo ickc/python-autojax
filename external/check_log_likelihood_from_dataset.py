@@ -3,6 +3,8 @@
 import numpy as np
 
 from autojax.original import log_likelihood_function
+from autojax.numba import log_likelihood_function as log_likelihood_function_numba
+from autojax.jax import log_likelihood_function as log_likelihood_function_jax
 
 
 def external():
@@ -69,6 +71,8 @@ def external():
 
 
 def main() -> float:
+    ref = -3028.5513427463716
+
     dirty_image, w_tilde, noise_map, mapping_matrix, neighbors, neighbors_sizes = external()
     for name in ("dirty_image", "w_tilde", "noise_map", "mapping_matrix", "neighbors", "neighbors_sizes"):
         print("=========", name, "=========")
@@ -82,11 +86,32 @@ def main() -> float:
         neighbors,
         neighbors_sizes,
     )
+    print("=========", "log_likelihood", "=========")
+    print(log_likelihood)
+    np.testing.assert_allclose(log_likelihood, ref)
+    log_likelihood_numba = log_likelihood_function_numba(
+        np.array(dirty_image),
+        w_tilde,
+        np.array(noise_map),
+        mapping_matrix,
+        neighbors,
+        neighbors_sizes,
+    )
+    print("=========", "log_likelihood_numba", "=========")
+    print(log_likelihood_numba)
+    np.testing.assert_allclose(log_likelihood_numba, ref)
+    log_likelihood_jax = log_likelihood_function_jax(
+        np.array(dirty_image),
+        w_tilde,
+        np.array(noise_map),
+        mapping_matrix,
+        neighbors,
+        neighbors_sizes,
+    )
+    print("=========", "log_likelihood_jax", "=========")
+    print(log_likelihood_jax)
     return log_likelihood
 
 
 if __name__ == "__main__":
     log_likelihood = main()
-    print("=========", "log_likelihood", "=========")
-    print(log_likelihood)
-    np.testing.assert_allclose(log_likelihood, -3028.5513427463716)
