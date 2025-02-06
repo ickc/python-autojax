@@ -202,7 +202,7 @@ def w_tilde_curvature_interferometer_from(
     )  # sum over k
 
 
-@jit("f8[::1](f8[:, ::1], f8[::1])", nopython=True, nogil=True, parallel=True)
+@jit("f8[::1](f8[:, ::1], f8[::1])", nopython=True, nogil=True)
 def data_vector_from(
     mapping_matrix: np.ndarray[tuple[int, int], np.float64],
     dirty_image: np.ndarray[tuple[int], np.float64],
@@ -222,7 +222,7 @@ def data_vector_from(
     return dirty_image @ mapping_matrix
 
 
-@jit("f8[:, ::1](f8[:, ::1], f8[:, ::1])", nopython=True, nogil=True, parallel=True)
+@jit("f8[:, ::1](f8[:, ::1], f8[:, ::1])", nopython=True, nogil=True)
 def curvature_matrix_via_w_tilde_from(
     w_tilde: np.ndarray[tuple[int, int], np.float64],
     mapping_matrix: np.ndarray[tuple[int, int], np.float64],
@@ -290,7 +290,7 @@ def constant_regularization_matrix_from(
     return regularization_matrix
 
 
-@jit("f8[::1](f8[::1], f8[:, ::1])", nopython=True, nogil=True, parallel=True)
+@jit("f8[::1](f8[::1], f8[:, ::1])", nopython=True, nogil=True)
 def reconstruction_positive_negative_from(
     data_vector: np.ndarray[tuple[int], np.float64],
     curvature_reg_matrix: np.ndarray[tuple[int, int], np.float64],
