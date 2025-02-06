@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+
 import numpy as np
 import pytest
 
@@ -41,6 +43,12 @@ def create_M_inv(n):
             ip1, jp1 = i + 1, j + 1
             M_inv[i, j] = (min(ip1, jp1) * (n + 1 - max(ip1, jp1))) / (n + 1)
     return M_inv
+
+
+def deterministic_seed(cls):
+    """Generate a deterministic seed from the class name."""
+    hash_value = hashlib.md5(cls.__name__.encode()).hexdigest()  # Get a hash from class name
+    return int(hash_value, 16) % (2**32)  # Convert to an integer within a reasonable range
 
 
 class TestMask2DCircularFrom:
@@ -123,7 +131,7 @@ class TestWTildeDataInterferometer:
     @pytest.fixture
     def setup_data(self):
         """Fixture to set up test data"""
-        rng = np.random.default_rng(20250101)  # Use Generator with seed
+        rng = np.random.default_rng(deterministic_seed(self.__class__))
         M = self.M
         N = self.N
 
@@ -226,7 +234,7 @@ class TestWTildeCurvatureInterferometer:
     @pytest.fixture
     def setup_data(self):
         """Fixture to set up test data"""
-        rng = np.random.default_rng(20250101)  # Use Generator with seed
+        rng = np.random.default_rng(deterministic_seed(self.__class__))
         M = self.M
         N = self.N
 
@@ -310,7 +318,7 @@ class TestDataVectorFrom:
     @pytest.fixture
     def setup_data(self):
         """Fixture to set up test data"""
-        rng = np.random.default_rng(20250101)  # Use Generator with seed
+        rng = np.random.default_rng(deterministic_seed(self.__class__))
         N = self.N
 
         mapping_matrix = rng.random((N, N))
@@ -373,7 +381,7 @@ class TestCurvatureMatrixViaWTildeFrom:
     @pytest.fixture
     def setup_data(self):
         """Fixture to set up test data"""
-        rng = np.random.default_rng(20250101)  # Use Generator with seed
+        rng = np.random.default_rng(deterministic_seed(self.__class__))
         N = self.N
 
         w_tilde = rng.random((N, N))
@@ -437,7 +445,7 @@ class TestConstantRegularizationMatrixFrom:
     @pytest.fixture
     def setup_data(self):
         """Fixture to set up test data"""
-        rng = np.random.default_rng(20250101)  # Use Generator with seed
+        rng = np.random.default_rng(deterministic_seed(self.__class__))
         M = self.M
         N = self.N
 
@@ -514,7 +522,7 @@ class TestReconstructionPositiveNegativeFrom:
     @pytest.fixture
     def setup_data(self):
         """Fixture to set up test data"""
-        rng = np.random.default_rng(20250101)  # Use Generator with seed
+        rng = np.random.default_rng(deterministic_seed(self.__class__))
         M = self.M
 
         data_vector = rng.random(M)
@@ -578,7 +586,7 @@ class TestNoiseNormalizationComplexFrom:
     @pytest.fixture
     def setup_data(self):
         """Fixture to set up test data"""
-        rng = np.random.default_rng(20250101)  # Use Generator with seed
+        rng = np.random.default_rng(deterministic_seed(self.__class__))
         M = self.M
 
         real_part = rng.random(M)
