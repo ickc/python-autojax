@@ -171,7 +171,7 @@ def w_tilde_curvature_interferometer_from(
     due to the use of vectorized operations.
 
     .. math::
-        W̃_{ij} = \sum_{k=1}^N \frac{1}{n_k^2} \cos(2\pi[(g_{i1} - g_{j1})u_{k0} + (g_{i0} - g_{j0})u_{k1}])
+        \tilde{W}_{ij} = \sum_{k=1}^N \frac{1}{n_k^2} \cos(2\pi[(g_{i1} - g_{j1})u_{k0} + (g_{i0} - g_{j0})u_{k1}])
 
     Parameters
     ----------
@@ -190,23 +190,16 @@ def w_tilde_curvature_interferometer_from(
         A matrix that encodes the NUFFT values between the noise map that enables efficient calculation of the curvature
         matrix.
     """
-    # (i∊M, j∊M, 1, 2)
-    g_ij = grid_radians_slim.reshape(-1, 1, 1, 2) - grid_radians_slim.reshape(1, -1, 1, 2)
-    # (1, 1, k∊N, 2)
-    u_k = uv_wavelengths.reshape(1, 1, -1, 2)
-    return (
-        jnp.cos(
-            TWO_PI
-            *
-            # (M, M, N)
-            (g_ij[:, :, :, 0] * u_k[:, :, :, 1] + g_ij[:, :, :, 1] * u_k[:, :, :, 0])
-        )
-        /
-        # (1, 1, k∊N)
-        jnp.square(noise_map_real).reshape(1, 1, -1)
-    ).sum(
-        2
-    )  # sum over k
+    # A_ik, i<M, k<N
+    # assume M > N to put TWO_PI multiplication there
+    A = grid_radians_slim @ (TWO_PI * uv_wavelengths)[:, ::-1].T
+
+    noise_map_real_inv = jnp.reciprocal(noise_map_real)
+    C = jnp.cos(A) * noise_map_real_inv
+    S = jnp.sin(A) * noise_map_real_inv
+
+    curvature_matrix = C @ C.T + S @ S.T
+    return curvature_matrix
 
 
 @jax.jit
