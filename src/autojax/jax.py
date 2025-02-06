@@ -361,3 +361,43 @@ def noise_normalization_complex_from(
         The masked noise-map of the dataset.
     """
     return jnp.log((2.0 * jnp.pi) * jnp.square(noise_map.view(jnp.float64))).sum()
+
+
+@jax.jit
+def log_likelihood_function(
+    dirty_image: np.ndarray[tuple[int], np.float64],
+    w_tilde: np.ndarray[tuple[int, int], np.float64],
+    noise_map: np.ndarray[tuple[int], np.complex128],
+    mapping_matrix: np.ndarray[tuple[int, int], np.float64],
+    neighbors: np.ndarray[tuple[int, int], np.int64],
+    neighbors_sizes: np.ndarray[tuple[int], np.int64],
+) -> float:
+    coefficient = 1.0
+
+    noise_normalization = noise_normalization_complex_from(noise_map)
+
+    curvature_matrix = curvature_matrix_via_w_tilde_from(w_tilde, mapping_matrix)
+
+    # TODO: Need to double check the chi_squared term.
+    chi_squared = jnp.trace(curvature_matrix) - 2.0 * (mapping_matrix @ dirty_image).sum()
+
+    regularization_matrix = constant_regularization_matrix_from(
+        coefficient,
+        neighbors,
+        neighbors_sizes,
+    )
+    curvature_reg_matrix = curvature_matrix + regularization_matrix
+    data_vector = data_vector_from(mapping_matrix, dirty_image)
+    reconstruction = reconstruction_positive_negative_from(data_vector, curvature_reg_matrix)
+    regularization_term = reconstruction.T @ regularization_matrix @ reconstruction
+
+    log_curvature_reg_matrix_term = jnp.linalg.slogdet(curvature_reg_matrix)[1]
+    log_regularization_matrix_term = jnp.linalg.slogdet(regularization_matrix)[1]
+
+    return -0.5 * (
+        chi_squared
+        + regularization_term
+        + log_curvature_reg_matrix_term
+        - log_regularization_matrix_term
+        + noise_normalization
+    )
