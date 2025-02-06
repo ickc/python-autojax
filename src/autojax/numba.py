@@ -3,6 +3,9 @@ from __future__ import annotations
 import numpy as np
 from numba import jit
 
+TWO_PI = 2.0 * np.pi
+LOG_TWO_PI = np.log(TWO_PI)
+
 
 @jit("UniTuple(f8, 2)(UniTuple(i8, 2), UniTuple(f8, 2), UniTuple(f8, 2))", nopython=True, nogil=True, parallel=False)
 def mask_2d_centres_from(
@@ -133,7 +136,7 @@ def w_tilde_data_interferometer_from(
         # (1, j∊N)
         np.square(np.square(noise_map_real) / visibilities_real).reshape(1, -1)
         * np.cos(
-            (2.0 * np.pi)
+            TWO_PI
             *
             # (i∊M, j∊N)
             (g_i[:, :, 0] * u_j[:, :, 1] + g_i[:, :, 1] * u_j[:, :, 0])
@@ -189,7 +192,7 @@ def w_tilde_curvature_interferometer_from(
     u_k = uv_wavelengths.reshape(1, 1, -1, 2)
     return (
         np.cos(
-            (2.0 * np.pi)
+            TWO_PI
             *
             # (M, M, N)
             (g_ij[:, :, :, 0] * u_k[:, :, :, 1] + g_ij[:, :, :, 1] * u_k[:, :, :, 0])
@@ -347,7 +350,8 @@ def noise_normalization_complex_from(
     noise_map
         The masked noise-map of the dataset.
     """
-    return np.log((2.0 * np.pi) * np.square(noise_map.view(np.float64))).sum()
+    N = noise_map.size
+    return 2.0 * (N * LOG_TWO_PI + np.log(np.abs(noise_map.view(np.float64))).sum())
 
 
 @jit("f8(f8[::1], f8[:, ::1], c16[::1], f8[:, ::1], i8[:, ::1], i8[::1])", nopython=True, nogil=True, parallel=True)

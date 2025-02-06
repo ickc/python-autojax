@@ -11,6 +11,9 @@ if TYPE_CHECKING:
 
 jax.config.update("jax_enable_x64", True)
 
+TWO_PI = 2.0 * jnp.pi
+LOG_TWO_PI = jnp.log(TWO_PI)
+
 
 @jax.jit
 def mask_2d_centres_from(
@@ -137,7 +140,7 @@ def w_tilde_data_interferometer_from(
         # (1, j∊N)
         jnp.square(jnp.square(noise_map_real) / visibilities_real).reshape(1, -1)
         * jnp.cos(
-            (2.0 * jnp.pi)
+            TWO_PI
             *
             # (i∊M, j∊N)
             (g_i[:, :, 0] * u_j[:, :, 1] + g_i[:, :, 1] * u_j[:, :, 0])
@@ -193,7 +196,7 @@ def w_tilde_curvature_interferometer_from(
     u_k = uv_wavelengths.reshape(1, 1, -1, 2)
     return (
         jnp.cos(
-            (2.0 * jnp.pi)
+            TWO_PI
             *
             # (M, M, N)
             (g_ij[:, :, :, 0] * u_k[:, :, :, 1] + g_ij[:, :, :, 1] * u_k[:, :, :, 0])
@@ -360,7 +363,8 @@ def noise_normalization_complex_from(
     noise_map
         The masked noise-map of the dataset.
     """
-    return jnp.log((2.0 * jnp.pi) * jnp.square(noise_map.view(jnp.float64))).sum()
+    N = noise_map.size
+    return 2.0 * (N * LOG_TWO_PI + jnp.log(jnp.abs(noise_map.view(jnp.float64))).sum())
 
 
 @jax.jit
