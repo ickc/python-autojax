@@ -3,7 +3,8 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from autojax import original, numba, jax
+from autojax import jax, numba, original
+
 
 def create_M(n):
     """
@@ -65,7 +66,7 @@ class TestMask2DCircularFrom:
             "centre": centre,
             "ref": ref,
         }
-    
+
     @pytest.mark.benchmark(group="mask_2d_circular_from")
     def test_mask_2d_circular_from_original(self, setup_data, benchmark):
         """Benchmark the original mask_2d_circular_from function"""
@@ -211,7 +212,7 @@ class TestWTildeDataInterferometer:
                 noise_map_real,
                 uv_wavelengths,
                 grid_radians_slim,
-                native_index_for_slim_index
+                native_index_for_slim_index,
             ).block_until_ready()
 
         result = benchmark(run)
@@ -296,7 +297,7 @@ class TestWTildeCurvatureInterferometer:
             return jax.w_tilde_curvature_interferometer_from(
                 noise_map_real,
                 uv_wavelengths,
-                grid_radians_slim
+                grid_radians_slim,
             ).block_until_ready()
 
         result = benchmark(run)
@@ -444,11 +445,15 @@ class TestConstantRegularizationMatrixFrom:
         neighbors_sizes = rng.integers(0, N + 1, M)
         neighbors = np.full((M, N), -1, dtype=np.int64)
         for i in range(M):
-            neighbors[i, :neighbors_sizes[i]] = np.sort(rng.choice(M, neighbors_sizes[i], replace=False))
+            neighbors[i, : neighbors_sizes[i]] = np.sort(
+                rng.choice(
+                    M,
+                    neighbors_sizes[i],
+                    replace=False,
+                )
+            )
 
-        ref = original.constant_regularization_matrix_from(
-            coefficient, neighbors, neighbors_sizes
-        )
+        ref = original.constant_regularization_matrix_from(coefficient, neighbors, neighbors_sizes)
 
         return {
             "coefficient": coefficient,
@@ -467,9 +472,7 @@ class TestConstantRegularizationMatrixFrom:
         ref = setup_data["ref"]
 
         def run():
-            return original.constant_regularization_matrix_from(
-                coefficient, neighbors, neighbors_sizes
-            )
+            return original.constant_regularization_matrix_from(coefficient, neighbors, neighbors_sizes)
 
         result = benchmark(run)
         np.testing.assert_allclose(result, ref)
@@ -484,9 +487,7 @@ class TestConstantRegularizationMatrixFrom:
         ref = setup_data["ref"]
 
         def run():
-            return numba.constant_regularization_matrix_from(
-                coefficient, neighbors, neighbors_sizes
-            )
+            return numba.constant_regularization_matrix_from(coefficient, neighbors, neighbors_sizes)
 
         result = benchmark(run)
         np.testing.assert_allclose(result, ref)
@@ -501,9 +502,7 @@ class TestConstantRegularizationMatrixFrom:
         ref = setup_data["ref"]
 
         def run():
-            return jax.constant_regularization_matrix_from(
-                coefficient, neighbors, neighbors_sizes
-            ).block_until_ready()
+            return jax.constant_regularization_matrix_from(coefficient, neighbors, neighbors_sizes).block_until_ready()
 
         result = benchmark(run)
         np.testing.assert_allclose(result, ref)
@@ -539,9 +538,7 @@ class TestReconstructionPositiveNegativeFrom:
         ref = setup_data["ref"]
 
         def run():
-            return original.reconstruction_positive_negative_from(
-                data_vector, curvature_matrix
-            )
+            return original.reconstruction_positive_negative_from(data_vector, curvature_matrix)
 
         result = benchmark(run)
         np.testing.assert_allclose(result, ref)
@@ -555,9 +552,7 @@ class TestReconstructionPositiveNegativeFrom:
         ref = setup_data["ref"]
 
         def run():
-            return numba.reconstruction_positive_negative_from(
-                data_vector, curvature_matrix
-            )
+            return numba.reconstruction_positive_negative_from(data_vector, curvature_matrix)
 
         result = benchmark(run)
         np.testing.assert_allclose(result, ref)
@@ -571,14 +566,11 @@ class TestReconstructionPositiveNegativeFrom:
         ref = setup_data["ref"]
 
         def run():
-            return jax.reconstruction_positive_negative_from(
-                data_vector, curvature_matrix
-            ).block_until_ready()
+            return jax.reconstruction_positive_negative_from(data_vector, curvature_matrix).block_until_ready()
 
         result = benchmark(run)
         np.testing.assert_allclose(result, ref)
 
-# noise_normalization_complex_from
 
 class TestNoiseNormalizationComplexFrom:
     M = 100
@@ -594,9 +586,7 @@ class TestNoiseNormalizationComplexFrom:
 
         noise_map = real_part + 1j * imaginary_part
 
-        ref = original.noise_normalization_complex_from(
-            noise_map
-        )
+        ref = original.noise_normalization_complex_from(noise_map)
 
         return {
             "noise_map": noise_map,
@@ -611,9 +601,7 @@ class TestNoiseNormalizationComplexFrom:
         ref = setup_data["ref"]
 
         def run():
-            return original.noise_normalization_complex_from(
-                noise_map
-            )
+            return original.noise_normalization_complex_from(noise_map)
 
         result = benchmark(run)
         np.testing.assert_allclose(result, ref)
@@ -626,9 +614,7 @@ class TestNoiseNormalizationComplexFrom:
         ref = setup_data["ref"]
 
         def run():
-            return numba.noise_normalization_complex_from(
-                noise_map
-            )
+            return numba.noise_normalization_complex_from(noise_map)
 
         result = benchmark(run)
         np.testing.assert_allclose(result, ref)
@@ -641,9 +627,7 @@ class TestNoiseNormalizationComplexFrom:
         ref = setup_data["ref"]
 
         def run():
-            return jax.noise_normalization_complex_from(
-                noise_map
-            ).block_until_ready()
+            return jax.noise_normalization_complex_from(noise_map).block_until_ready()
 
         result = benchmark(run)
         np.testing.assert_allclose(result, ref)

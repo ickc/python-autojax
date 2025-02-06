@@ -75,12 +75,16 @@ def mask_2d_circular_from(
     centres_scaled = mask_2d_centres_from(shape_native, pixel_scales, centre)
     ys, xs = np.indices(shape_native)
     return (radius * radius) < (
-            np.square((ys - centres_scaled[0]) * pixel_scales[0]) +
-            np.square((xs - centres_scaled[1]) * pixel_scales[1])
-        )
+        np.square((ys - centres_scaled[0]) * pixel_scales[0]) + np.square((xs - centres_scaled[1]) * pixel_scales[1])
+    )
 
 
-@jit("float64[::1](float64[::1], float64[::1], float64[:,::1], float64[:,::1], int64[:,::1])", nopython=True, nogil=True, parallel=True)
+@jit(
+    "float64[::1](float64[::1], float64[::1], float64[:,::1], float64[:,::1], int64[:,::1])",
+    nopython=True,
+    nogil=True,
+    parallel=True,
+)
 def w_tilde_data_interferometer_from(
     visibilities_real: np.ndarray[tuple[int], np.float64],
     noise_map_real: np.ndarray[tuple[int], np.float64],
@@ -127,16 +131,16 @@ def w_tilde_data_interferometer_from(
     u_j = uv_wavelengths.reshape(1, -1, 2)
     return (
         # (1, j∊N)
-        np.square(np.square(noise_map_real) / visibilities_real).reshape(1, -1) *
-        np.cos(
-            (2.0 * np.pi) *
+        np.square(np.square(noise_map_real) / visibilities_real).reshape(1, -1)
+        * np.cos(
+            (2.0 * np.pi)
+            *
             # (i∊M, j∊N)
-            (
-                g_i[:, :, 0] * u_j[:, :, 1] +
-                g_i[:, :, 1] * u_j[:, :, 0]
-            )
+            (g_i[:, :, 0] * u_j[:, :, 1] + g_i[:, :, 1] * u_j[:, :, 0])
         )
-    ).sum(axis=1)  # sum over j
+    ).sum(
+        axis=1
+    )  # sum over j
 
 
 @jit("f8[:, ::1](f8[::1], f8[:, ::1], f8[:, ::1])", nopython=True, nogil=True, parallel=True)
@@ -180,21 +184,22 @@ def w_tilde_curvature_interferometer_from(
         matrix.
     """
     # (i∊M, j∊M, 1, 2)
-    g_ij =  grid_radians_slim.reshape(-1, 1, 1, 2) - grid_radians_slim.reshape(1, -1, 1, 2)
+    g_ij = grid_radians_slim.reshape(-1, 1, 1, 2) - grid_radians_slim.reshape(1, -1, 1, 2)
     # (1, 1, k∊N, 2)
     u_k = uv_wavelengths.reshape(1, 1, -1, 2)
     return (
         np.cos(
-            (2.0 * np.pi) *
+            (2.0 * np.pi)
+            *
             # (M, M, N)
-            (
-                g_ij[:, :, :, 0] * u_k[:, :, :, 1] +
-                g_ij[:, :, :, 1] * u_k[:, :, :, 0]
-            )
-        ) /
+            (g_ij[:, :, :, 0] * u_k[:, :, :, 1] + g_ij[:, :, :, 1] * u_k[:, :, :, 0])
+        )
+        /
         # (1, 1, k∊N)
         np.square(noise_map_real).reshape(1, 1, -1)
-    ).sum(2)  # sum over k
+    ).sum(
+        2
+    )  # sum over k
 
 
 @jit("f8[::1](f8[:, ::1], f8[::1])", nopython=True, nogil=True, parallel=True)

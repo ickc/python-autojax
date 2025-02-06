@@ -3,11 +3,8 @@ from __future__ import annotations
 from functools import partial
 from typing import TYPE_CHECKING
 
-import numpy as np
-import numba
 import jax
 import jax.numpy as jnp
-from jax import lax
 
 if TYPE_CHECKING:
     import numpy as np
@@ -86,9 +83,9 @@ def mask_2d_circular_from(
     centres_scaled = mask_2d_centres_from(shape_native, pixel_scales, centre)
     ys, xs = jnp.indices(shape_native)
     return (radius * radius) < (
-            jnp.square((ys - centres_scaled[0]) * pixel_scales[0]) +
-            jnp.square((xs - centres_scaled[1]) * pixel_scales[1])
-        )
+        jnp.square((ys - centres_scaled[0]) * pixel_scales[0])  #
+        + jnp.square((xs - centres_scaled[1]) * pixel_scales[1])
+    )
 
 
 @jax.jit
@@ -138,16 +135,16 @@ def w_tilde_data_interferometer_from(
     u_j = uv_wavelengths.reshape(1, -1, 2)
     return (
         # (1, j∊N)
-        jnp.square(jnp.square(noise_map_real) / visibilities_real).reshape(1, -1) *
-        jnp.cos(
-            (2.0 * jnp.pi) *
+        jnp.square(jnp.square(noise_map_real) / visibilities_real).reshape(1, -1)
+        * jnp.cos(
+            (2.0 * jnp.pi)
+            *
             # (i∊M, j∊N)
-            (
-                g_i[:, :, 0] * u_j[:, :, 1] +
-                g_i[:, :, 1] * u_j[:, :, 0]
-            )
+            (g_i[:, :, 0] * u_j[:, :, 1] + g_i[:, :, 1] * u_j[:, :, 0])
         )
-    ).sum(axis=1)  # sum over j
+    ).sum(
+        axis=1
+    )  # sum over j
 
 
 @jax.jit
@@ -191,21 +188,22 @@ def w_tilde_curvature_interferometer_from(
         matrix.
     """
     # (i∊M, j∊M, 1, 2)
-    g_ij =  grid_radians_slim.reshape(-1, 1, 1, 2) - grid_radians_slim.reshape(1, -1, 1, 2)
+    g_ij = grid_radians_slim.reshape(-1, 1, 1, 2) - grid_radians_slim.reshape(1, -1, 1, 2)
     # (1, 1, k∊N, 2)
     u_k = uv_wavelengths.reshape(1, 1, -1, 2)
     return (
         jnp.cos(
-            (2.0 * jnp.pi) *
+            (2.0 * jnp.pi)
+            *
             # (M, M, N)
-            (
-                g_ij[:, :, :, 0] * u_k[:, :, :, 1] +
-                g_ij[:, :, :, 1] * u_k[:, :, :, 0]
-            )
-        ) /
+            (g_ij[:, :, :, 0] * u_k[:, :, :, 1] + g_ij[:, :, :, 1] * u_k[:, :, :, 0])
+        )
+        /
         # (1, 1, k∊N)
         jnp.square(noise_map_real).reshape(1, 1, -1)
-    ).sum(2)  # sum over k
+    ).sum(
+        2
+    )  # sum over k
 
 
 @jax.jit
@@ -299,8 +297,7 @@ def constant_regularization_matrix_from(
     # This ensures that JAX can efficiently drop these entries during matrix updates.
     neighbors = jnp.where(neighbors == -1, OUT_OF_BOUND_IDX, neighbors)
     return (
-        jnp.diag(1e-8 + regularization_coefficient * neighbors_sizes)
-        .at[I_IDX, neighbors]
+        jnp.diag(1e-8 + regularization_coefficient * neighbors_sizes).at[I_IDX, neighbors]
         # unique indices should be guranteed by neighbors-spec
         .add(-regularization_coefficient, mode="drop", unique_indices=True)
     )

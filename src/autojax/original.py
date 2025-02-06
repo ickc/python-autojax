@@ -76,7 +76,9 @@ def mask_2d_circular_from(
     mask_2d = np.full(shape_native, True)
 
     centres_scaled = mask_2d_centres_from(
-        shape_native=mask_2d.shape, pixel_scales=pixel_scales, centre=centre
+        shape_native=mask_2d.shape,
+        pixel_scales=pixel_scales,
+        centre=centre,
     )
 
     for y in range(mask_2d.shape[0]):
@@ -147,12 +149,7 @@ def w_tilde_data_interferometer_from(
 
         for vis_1d_index in range(uv_wavelengths.shape[0]):
             value += weight_map_real[vis_1d_index] ** -2.0 * np.cos(
-                2.0
-                * np.pi
-                * (
-                    y * uv_wavelengths[vis_1d_index, 0]
-                    + x * uv_wavelengths[vis_1d_index, 1]
-                )
+                2.0 * np.pi * (y * uv_wavelengths[vis_1d_index, 0] + x * uv_wavelengths[vis_1d_index, 1])
             )
 
         w_tilde_data[ip0] = value
@@ -206,10 +203,7 @@ def w_tilde_curvature_interferometer_from(
                 w_tilde[i, j] += noise_map_real[vis_1d_index] ** -2.0 * np.cos(
                     2.0
                     * np.pi
-                    * (
-                        y_offset * uv_wavelengths[vis_1d_index, 0]
-                        + x_offset * uv_wavelengths[vis_1d_index, 1]
-                    )
+                    * (y_offset * uv_wavelengths[vis_1d_index, 0] + x_offset * uv_wavelengths[vis_1d_index, 1])
                 )
 
     for i in range(w_tilde.shape[0]):
@@ -232,14 +226,10 @@ def data_vector_from(mapping_matrix, dirty_image):
 
     The calculation is described in more detail in `inversion_util.w_tilde_data_interferometer_from`.
     """
-    return np.dot(
-        mapping_matrix.T, dirty_image
-    )
+    return np.dot(mapping_matrix.T, dirty_image)
 
 
-def curvature_matrix_via_w_tilde_from(
-    w_tilde: np.ndarray, mapping_matrix: np.ndarray
-) -> np.ndarray:
+def curvature_matrix_via_w_tilde_from(w_tilde: np.ndarray, mapping_matrix: np.ndarray) -> np.ndarray:
     """
     Returns the curvature matrix `F` (see Warren & Dye 2003) from `w_tilde`.
 
