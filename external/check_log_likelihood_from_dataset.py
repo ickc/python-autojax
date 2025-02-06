@@ -2,9 +2,9 @@
 
 import numpy as np
 
-from autojax.original import log_likelihood_function
-from autojax.numba import log_likelihood_function as log_likelihood_function_numba
 from autojax.jax import log_likelihood_function as log_likelihood_function_jax
+from autojax.numba import log_likelihood_function as log_likelihood_function_numba
+from autojax.original import log_likelihood_function
 
 
 def external():
