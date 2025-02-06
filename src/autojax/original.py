@@ -354,3 +354,49 @@ def noise_normalization_complex_from(noise_map: np.ndarray) -> float:
     noise_normalization_real = np.sum(np.log(2 * np.pi * noise_map.real**2.0))
     noise_normalization_imag = np.sum(np.log(2 * np.pi * noise_map.imag**2.0))
     return noise_normalization_real + noise_normalization_imag
+
+
+def log_likelihood_function(
+    dirty_image: np.ndarray[tuple[int], np.float64],
+    w_tilde: np.ndarray[tuple[int, int], np.float64],
+    noise_map: np.ndarray[tuple[int], np.complex128],
+    mapping_matrix: np.ndarray[tuple[int, int], np.float64],
+    neighbors: np.ndarray[tuple[int, int], np.int64],
+    neighbors_sizes: np.ndarray[tuple[int], np.int64],
+) -> float:
+    coefficient = 1.0
+
+    data_vector = data_vector_from(mapping_matrix, dirty_image)
+    curvature_matrix = curvature_matrix_via_w_tilde_from(w_tilde, mapping_matrix)
+    regularization_matrix = constant_regularization_matrix_from(
+        coefficient,
+        neighbors,
+        neighbors_sizes,
+    )
+    curvature_reg_matrix = curvature_matrix + regularization_matrix
+    reconstruction = reconstruction_positive_negative_from(data_vector, curvature_reg_matrix)
+
+    # TODO: Need to double check the chi_squared term.
+    chi_squared_term_1 = np.trace(curvature_matrix)
+    chi_squared_term_2 = -np.multiply(
+        2.0, np.dot(mapping_matrix, dirty_image)
+    ).sum()  # Need to double check dirty_image is the right input.
+    chi_squared = chi_squared_term_1 + chi_squared_term_2
+
+    regularization_term = np.matmul(reconstruction.T, np.matmul(regularization_matrix, reconstruction))
+
+    log_curvature_reg_matrix_term = np.linalg.slogdet(curvature_reg_matrix)[1]
+    log_regularization_matrix_term = np.linalg.slogdet(regularization_matrix)[1]
+
+    noise_normalization = noise_normalization_complex_from(noise_map)
+
+    return float(
+        -0.5
+        * (
+            chi_squared
+            + regularization_term
+            + log_curvature_reg_matrix_term
+            - log_regularization_matrix_term
+            + noise_normalization
+        )
+    )
