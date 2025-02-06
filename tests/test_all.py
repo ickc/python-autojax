@@ -45,10 +45,89 @@ def create_M_inv(n):
     return M_inv
 
 
-def deterministic_seed(string: str) -> int:
+def deterministic_seed(string: str, *numbers: int) -> int:
     """Generate a deterministic seed from the class name."""
-    hash_value = hashlib.md5(string.encode()).hexdigest()  # Get a hash from class name
+    hash_value = hashlib.md5(repr((string, numbers)).encode()).hexdigest()  # Get a hash from class name
     return int(hash_value, 16) % (2**32)  # Convert to an integer within a reasonable range
+
+
+def gen_mapping_matrix(N: int) -> np.ndarray[tuple[int, int], np.float64]:
+    """Generate a random mapping matrix of size N."""
+    rng = np.random.default_rng(deterministic_seed("mapping_matrix", N, N))
+    return rng.random((N, N))
+
+
+def gen_dirty_image(N: int) -> np.ndarray[tuple[int], np.float64]:
+    """Generate a random dirty image of size N."""
+    rng = np.random.default_rng(deterministic_seed("dirty_image", N))
+    return rng.random(N)
+
+
+def gen_visibilities_real(N: int) -> np.ndarray[tuple[int], np.float64]:
+    """Generate random real visibilities of size N."""
+    rng = np.random.default_rng(deterministic_seed("visibilities_real", N))
+    return rng.random(N)
+
+
+def gen_noise_map_real(N: int) -> np.ndarray[tuple[int], np.float64]:
+    """Generate random real noise map of size N."""
+    rng = np.random.default_rng(deterministic_seed("noise_map_real", N))
+    return rng.random(N)
+
+
+def gen_uv_wavelengths(N: int) -> np.ndarray[tuple[int, int], np.float64]:
+    """Generate random uv wavelengths of size N."""
+    rng = np.random.default_rng(deterministic_seed("uv_wavelengths", N, 2))
+    return rng.random((N, 2))
+
+
+def gen_grid_radians_slim(M: int) -> np.ndarray[tuple[int, int], np.float64]:
+    """Generate random slim grid of size M."""
+    rng = np.random.default_rng(deterministic_seed("grid_radians_slim", M, 2))
+    return rng.random((M, 2))
+
+
+def gen_native_index_for_slim_index(M: int) -> np.ndarray[tuple[int, int], np.int64]:
+    """Generate random native index for slim index of size M."""
+    rng = np.random.default_rng(deterministic_seed("native_index_for_slim_index", M, 2))
+    return rng.integers(0, M, size=(M, 2))
+
+
+def gen_w_tilde(N: int) -> np.ndarray[tuple[int, int], np.float64]:
+    """Generate random w_tilde of size N."""
+    rng = np.random.default_rng(deterministic_seed("w_tilde", N, N))
+    return rng.random((N, N))
+
+
+def gen_neighbors(M: int, N: int) -> tuple[
+    np.ndarray[tuple[int], np.int64],
+    np.ndarray[tuple[int, int], np.int64],
+]:
+    """Generate random neighbors and neighbors_sizes of sizes M and N."""
+    rng = np.random.default_rng(deterministic_seed("neighbors", M, N))
+    neighbors_sizes = rng.integers(0, N + 1, M)
+    neighbors = np.full((M, N), -1, dtype=np.int64)
+    for i in range(M):
+        neighbors[i, : neighbors_sizes[i]] = np.sort(
+            rng.choice(
+                M,
+                neighbors_sizes[i],
+                replace=False,
+            )
+        )
+    return neighbors, neighbors_sizes
+
+
+def gen_data_vector(N: int) -> np.ndarray[tuple[int], np.float64]:
+    """Generate random data vector of size N."""
+    rng = np.random.default_rng(deterministic_seed("data_vector", N))
+    return rng.random(N)
+
+
+def gen_noise_map(N: int) -> np.ndarray[tuple[int], np.complex128]:
+    """Generate random real noise map of size N."""
+    rng = np.random.default_rng(deterministic_seed("noise_map", N))
+    return rng.random(N) + 1j * rng.random(N)
 
 
 class TestMask2DCircularFrom:
@@ -131,15 +210,14 @@ class TestWTildeDataInterferometer:
     @pytest.fixture
     def setup_data(self):
         """Fixture to set up test data"""
-        rng = np.random.default_rng(deterministic_seed(type(self).__name__))
         M = self.M
         N = self.N
 
-        visibilities_real = rng.normal(size=N)
-        noise_map_real = rng.normal(size=N)
-        uv_wavelengths = rng.normal(size=(N, 2))
-        grid_radians_slim = rng.normal(size=(M, 2))
-        native_index_for_slim_index = rng.integers(0, M, size=(M, 2))
+        visibilities_real = gen_visibilities_real(N)
+        noise_map_real = gen_noise_map_real(N)
+        uv_wavelengths = gen_uv_wavelengths(N)
+        grid_radians_slim = gen_grid_radians_slim(M)
+        native_index_for_slim_index = gen_native_index_for_slim_index(M)
 
         ref = original.w_tilde_data_interferometer_from(
             visibilities_real,
@@ -234,13 +312,12 @@ class TestWTildeCurvatureInterferometer:
     @pytest.fixture
     def setup_data(self):
         """Fixture to set up test data"""
-        rng = np.random.default_rng(deterministic_seed(type(self).__name__))
         M = self.M
         N = self.N
 
-        noise_map_real = rng.random(N)
-        uv_wavelengths = rng.random((N, 2))
-        grid_radians_slim = rng.random((M, 2))
+        noise_map_real = gen_noise_map_real(N)
+        uv_wavelengths = gen_uv_wavelengths(N)
+        grid_radians_slim = gen_grid_radians_slim(M)
 
         ref = original.w_tilde_curvature_interferometer_from(
             noise_map_real,
@@ -318,11 +395,9 @@ class TestDataVectorFrom:
     @pytest.fixture
     def setup_data(self):
         """Fixture to set up test data"""
-        rng = np.random.default_rng(deterministic_seed(type(self).__name__))
         N = self.N
-
-        mapping_matrix = rng.random((N, N))
-        dirty_image = rng.random(N)
+        mapping_matrix = gen_mapping_matrix(N)
+        dirty_image = gen_dirty_image(N)
 
         ref = original.data_vector_from(mapping_matrix, dirty_image)
 
@@ -381,11 +456,10 @@ class TestCurvatureMatrixViaWTildeFrom:
     @pytest.fixture
     def setup_data(self):
         """Fixture to set up test data"""
-        rng = np.random.default_rng(deterministic_seed(type(self).__name__))
         N = self.N
 
-        w_tilde = rng.random((N, N))
-        mapping_matrix = rng.random((N, N))
+        w_tilde = gen_w_tilde(N)
+        mapping_matrix = gen_mapping_matrix(N)
 
         ref = original.curvature_matrix_via_w_tilde_from(w_tilde, mapping_matrix)
 
@@ -441,30 +515,19 @@ class TestCurvatureMatrixViaWTildeFrom:
 class TestConstantRegularizationMatrixFrom:
     M: int = 1000
     N: int = 10
+    coefficient: float = 1.0
 
     @pytest.fixture
     def setup_data(self):
         """Fixture to set up test data"""
-        rng = np.random.default_rng(deterministic_seed(type(self).__name__))
         M = self.M
         N = self.N
 
-        coefficient = rng.random()
-        neighbors_sizes = rng.integers(0, N + 1, M)
-        neighbors = np.full((M, N), -1, dtype=np.int64)
-        for i in range(M):
-            neighbors[i, : neighbors_sizes[i]] = np.sort(
-                rng.choice(
-                    M,
-                    neighbors_sizes[i],
-                    replace=False,
-                )
-            )
+        neighbors, neighbors_sizes = gen_neighbors(M, N)
 
-        ref = original.constant_regularization_matrix_from(coefficient, neighbors, neighbors_sizes)
+        ref = original.constant_regularization_matrix_from(self.coefficient, neighbors, neighbors_sizes)
 
         return {
-            "coefficient": coefficient,
             "neighbors": neighbors,
             "neighbors_sizes": neighbors_sizes,
             "ref": ref,
@@ -473,7 +536,7 @@ class TestConstantRegularizationMatrixFrom:
     @pytest.mark.benchmark(group="constant_regularization_matrix_from")
     def test_constant_regularization_matrix_from_original(self, setup_data, benchmark):
         """Benchmark the original constant_regularization_matrix_from function"""
-        coefficient = setup_data["coefficient"]
+        coefficient = self.coefficient
         neighbors = setup_data["neighbors"]
         neighbors_sizes = setup_data["neighbors_sizes"]
 
@@ -488,7 +551,7 @@ class TestConstantRegularizationMatrixFrom:
     @pytest.mark.benchmark(group="constant_regularization_matrix_from")
     def test_constant_regularization_matrix_from_numba(self, setup_data, benchmark):
         """Benchmark the numba constant_regularization_matrix_from function"""
-        coefficient = setup_data["coefficient"]
+        coefficient = self.coefficient
         neighbors = setup_data["neighbors"]
         neighbors_sizes = setup_data["neighbors_sizes"]
 
@@ -503,7 +566,7 @@ class TestConstantRegularizationMatrixFrom:
     @pytest.mark.benchmark(group="constant_regularization_matrix_from")
     def test_constant_regularization_matrix_from_jax(self, setup_data, benchmark):
         """Benchmark the jax constant_regularization_matrix_from function"""
-        coefficient = setup_data["coefficient"]
+        coefficient = self.coefficient
         neighbors = setup_data["neighbors"]
         neighbors_sizes = setup_data["neighbors_sizes"]
 
@@ -522,10 +585,9 @@ class TestReconstructionPositiveNegativeFrom:
     @pytest.fixture
     def setup_data(self):
         """Fixture to set up test data"""
-        rng = np.random.default_rng(deterministic_seed(type(self).__name__))
         M = self.M
 
-        data_vector = rng.random(M)
+        data_vector = gen_data_vector(M)
         curvature_matrix = create_M(M)
         inv = create_M_inv(M)
 
@@ -586,13 +648,9 @@ class TestNoiseNormalizationComplexFrom:
     @pytest.fixture
     def setup_data(self):
         """Fixture to set up test data"""
-        rng = np.random.default_rng(deterministic_seed(type(self).__name__))
         M = self.M
 
-        real_part = rng.random(M)
-        imaginary_part = rng.random(M)
-
-        noise_map = real_part + 1j * imaginary_part
+        noise_map = gen_noise_map(M)
 
         ref = original.noise_normalization_complex_from(noise_map)
 
