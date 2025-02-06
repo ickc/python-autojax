@@ -4,7 +4,7 @@ import numpy as np
 from numba import jit
 
 
-@jit("UniTuple(f8, 2)(UniTuple(i8, 2), UniTuple(f8, 2), UniTuple(f8, 2))", nopython=True, nogil=True, parallel=True)
+@jit("UniTuple(f8, 2)(UniTuple(i8, 2), UniTuple(f8, 2), UniTuple(f8, 2))", nopython=True, nogil=True, parallel=False)
 def mask_2d_centres_from(
     shape_native: tuple[int, int],
     pixel_scales: tuple[float, float],
@@ -39,7 +39,7 @@ def mask_2d_centres_from(
     )
 
 
-@jit("b1[:, ::1](UniTuple(i8, 2), UniTuple(f8, 2), f8, UniTuple(f8, 2))", nopython=True, nogil=True, parallel=True)
+@jit("b1[:, ::1](UniTuple(i8, 2), UniTuple(f8, 2), f8, UniTuple(f8, 2))", nopython=True, nogil=True, parallel=False)
 def mask_2d_circular_from(
     shape_native: tuple[int, int],
     pixel_scales: tuple[float, float],

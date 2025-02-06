@@ -4,7 +4,7 @@ import numpy as np
 from numba import jit
 
 
-@jit(nopython=True, nogil=True, parallel=True)
+@jit(nopython=True, nogil=True, parallel=False)
 def mask_2d_centres_from(
     shape_native: tuple[int, int],
     pixel_scales: tuple[float, float],
@@ -39,7 +39,7 @@ def mask_2d_centres_from(
     return (y_centre_scaled, x_centre_scaled)
 
 
-@jit(nopython=True, nogil=True, parallel=True)
+@jit(nopython=True, nogil=True, parallel=False)
 def mask_2d_circular_from(
     shape_native: tuple[int, int],
     pixel_scales: tuple[float, float],
