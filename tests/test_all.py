@@ -52,9 +52,16 @@ def deterministic_seed(string: str, *numbers: int) -> int:
 
 
 def gen_mapping_matrix(N: int) -> np.ndarray[tuple[int, int], np.float64]:
-    """Generate a random mapping matrix of size N."""
+    """Generate a random mapping matrix of size N.
+
+    The actual mapping matrix is quite sparse and have columns sum to 1.
+    We aren't producing the sparse-ness here.
+    """
     rng = np.random.default_rng(deterministic_seed("mapping_matrix", N, N))
-    return rng.random((N, N))
+    mapping_matrix = rng.random((N, N))
+    mapping_matrix /= mapping_matrix.sum(axis=1).reshape(-1, 1)
+    np.testing.assert_allclose(mapping_matrix.sum(axis=1), 1.0)
+    return mapping_matrix
 
 
 def gen_dirty_image(N: int) -> np.ndarray[tuple[int], np.float64]:
