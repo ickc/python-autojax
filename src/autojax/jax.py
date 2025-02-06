@@ -135,19 +135,11 @@ def w_tilde_data_interferometer_from(
         efficient calculation of the data vector.
     """
     g_i = grid_radians_slim.reshape(-1, 1, 2)
-    u_j = uv_wavelengths.reshape(1, -1, 2)
-    return (
-        # (1, j∊N)
-        jnp.square(jnp.square(noise_map_real) / visibilities_real).reshape(1, -1)
-        * jnp.cos(
-            TWO_PI
-            *
-            # (i∊M, j∊N)
-            (g_i[:, :, 0] * u_j[:, :, 1] + g_i[:, :, 1] * u_j[:, :, 0])
-        )
-    ).sum(
-        axis=1
-    )  # sum over j
+    # assume M > N to put TWO_PI multiplication there
+    u_k = TWO_PI * uv_wavelengths.reshape(1, -1, 2)
+    # A_ik, i<M, k<N
+    A = g_i[:, :, 0] * u_k[:, :, 1] + g_i[:, :, 1] * u_k[:, :, 0]
+    return jnp.cos(A) @ jnp.square(jnp.square(noise_map_real) / visibilities_real)
 
 
 @jax.jit
@@ -190,9 +182,11 @@ def w_tilde_curvature_interferometer_from(
         A matrix that encodes the NUFFT values between the noise map that enables efficient calculation of the curvature
         matrix.
     """
-    # A_ik, i<M, k<N
+    g_i = grid_radians_slim.reshape(-1, 1, 2)
     # assume M > N to put TWO_PI multiplication there
-    A = grid_radians_slim @ (TWO_PI * uv_wavelengths)[:, ::-1].T
+    u_k = TWO_PI * uv_wavelengths.reshape(1, -1, 2)
+    # A_ik, i<M, k<N
+    A = g_i[:, :, 0] * u_k[:, :, 1] + g_i[:, :, 1] * u_k[:, :, 0]
 
     noise_map_real_inv = jnp.reciprocal(noise_map_real)
     C = jnp.cos(A) * noise_map_real_inv
