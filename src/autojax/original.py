@@ -5,6 +5,94 @@ from numba import jit
 
 
 @jit(nopython=True, nogil=True, parallel=True)
+def mask_2d_centres_from(
+    shape_native: tuple[int, int],
+    pixel_scales: tuple[float, float],
+    centre: tuple[float, float],
+) -> tuple[float, float]:
+    """
+    Returns the (y,x) scaled central coordinates of a mask from its shape, pixel-scales and centre.
+
+    The coordinate system is defined such that the positive y axis is up and positive x axis is right.
+
+    Parameters
+    ----------
+    shape_native
+        The (y,x) shape of the 2D array the scaled centre is computed for.
+    pixel_scales
+        The (y,x) scaled units to pixel units conversion factor of the 2D array.
+    centre : (float, flloat)
+        The (y,x) centre of the 2D mask.
+
+    Returns
+    -------
+    tuple (float, float)
+        The (y,x) scaled central coordinates of the input array.
+
+    Examples
+    --------
+    centres_scaled = centres_from(shape=(5,5), pixel_scales=(0.5, 0.5), centre=(0.0, 0.0))
+    """
+    y_centre_scaled = (float(shape_native[0] - 1) / 2) - (centre[0] / pixel_scales[0])
+    x_centre_scaled = (float(shape_native[1] - 1) / 2) + (centre[1] / pixel_scales[1])
+
+    return (y_centre_scaled, x_centre_scaled)
+
+
+@jit(nopython=True, nogil=True, parallel=True)
+def mask_2d_circular_from(
+    shape_native: tuple[int, int],
+    pixel_scales: tuple[float, float],
+    radius: float,
+    centre: tuple[float, float] = (0.0, 0.0),
+) -> np.ndarray:
+    """
+    Returns a circular mask from the 2D mask array shape and radius of the circle.
+
+    This creates a 2D array where all values within the mask radius are unmasked and therefore `False`.
+
+    Parameters
+    ----------
+    shape_native: Tuple[int, int]
+        The (y,x) shape of the mask in units of pixels.
+    pixel_scales
+        The scaled units to pixel units conversion factor of each pixel.
+    radius
+        The radius (in scaled units) of the circle within which pixels unmasked.
+    centre
+            The centre of the circle used to mask pixels.
+
+    Returns
+    -------
+    ndarray
+        The 2D mask array whose central pixels are masked as a circle.
+
+    Examples
+    --------
+    mask = mask_circular_from(
+        shape=(10, 10), pixel_scales=0.1, radius=0.5, centre=(0.0, 0.0))
+    """
+
+    mask_2d = np.full(shape_native, True)
+
+    centres_scaled = mask_2d_centres_from(
+        shape_native=mask_2d.shape, pixel_scales=pixel_scales, centre=centre
+    )
+
+    for y in range(mask_2d.shape[0]):
+        for x in range(mask_2d.shape[1]):
+            y_scaled = (y - centres_scaled[0]) * pixel_scales[0]
+            x_scaled = (x - centres_scaled[1]) * pixel_scales[1]
+
+            r_scaled = np.sqrt(x_scaled**2 + y_scaled**2)
+
+            if r_scaled <= radius:
+                mask_2d[y, x] = False
+
+    return mask_2d
+
+
+@jit(nopython=True, nogil=True, parallel=True)
 def w_tilde_data_interferometer_from(
     visibilities_real: np.ndarray,
     noise_map_real: np.ndarray,

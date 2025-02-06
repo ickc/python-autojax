@@ -42,6 +42,79 @@ def create_M_inv(n):
     return M_inv
 
 
+class TestMask2DCircularFrom:
+    shape_native = (100, 100)
+    pixel_scales = (0.2, 0.2)
+    radius = 3.0
+    centre = (0.0, 0.0)
+
+    @pytest.fixture
+    def setup_data(self):
+        """Fixture to set up test data"""
+        shape_native = self.shape_native
+        pixel_scales = self.pixel_scales
+        radius = self.radius
+        centre = self.centre
+
+        ref = original.mask_2d_circular_from(shape_native, pixel_scales, radius)
+
+        return {
+            "shape_native": shape_native,
+            "pixel_scales": pixel_scales,
+            "radius": radius,
+            "centre": centre,
+            "ref": ref,
+        }
+    
+    @pytest.mark.benchmark(group="mask_2d_circular_from")
+    def test_mask_2d_circular_from_original(self, setup_data, benchmark):
+        """Benchmark the original mask_2d_circular_from function"""
+        shape_native = setup_data["shape_native"]
+        pixel_scales = setup_data["pixel_scales"]
+        radius = setup_data["radius"]
+        centre = setup_data["centre"]
+
+        ref = setup_data["ref"]
+
+        def run():
+            return original.mask_2d_circular_from(shape_native, pixel_scales, radius, centre)
+
+        result = benchmark(run)
+        np.testing.assert_allclose(result, ref)
+
+    @pytest.mark.benchmark(group="mask_2d_circular_from")
+    def test_mask_2d_circular_from_numba(self, setup_data, benchmark):
+        """Benchmark the numba mask_2d_circular_from function"""
+        shape_native = setup_data["shape_native"]
+        pixel_scales = setup_data["pixel_scales"]
+        radius = setup_data["radius"]
+        centre = setup_data["centre"]
+
+        ref = setup_data["ref"]
+
+        def run():
+            return numba.mask_2d_circular_from(shape_native, pixel_scales, radius, centre)
+
+        result = benchmark(run)
+        np.testing.assert_allclose(result, ref)
+
+    @pytest.mark.benchmark(group="mask_2d_circular_from")
+    def test_mask_2d_circular_from_jax(self, setup_data, benchmark):
+        """Benchmark the jax mask_2d_circular_from function"""
+        shape_native = setup_data["shape_native"]
+        pixel_scales = setup_data["pixel_scales"]
+        radius = setup_data["radius"]
+        centre = setup_data["centre"]
+
+        ref = setup_data["ref"]
+
+        def run():
+            return jax.mask_2d_circular_from(shape_native, pixel_scales, radius, centre).block_until_ready()
+
+        result = benchmark(run)
+        np.testing.assert_allclose(result, ref)
+
+
 class TestWTildeDataInterferometer:
     M = 1000
     N = 1000
