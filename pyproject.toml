@@ -130,13 +130,27 @@ testpaths = [
 line_length = 120
 known_first_party = 'autojax'
 default_section = 'THIRDPARTY'
+forced_separate = 'tests'
+profile = 'black'
 skip = [
-    '.tox',
     '.eggs',
     'ci/templates',
     'build',
     'dist',
 ]
+
+[tool.pylint.messages_control]
+disable = "C0330, C0326"
+
+[tool.pylint.format]
+max-line-length = 120
+
+[tool.black]
+line-length = 120
+target-version = ['py39']
+
+[tool.jupytext]
+formats = "ipynb,py:percent"
 
 [tool.bumpversion]
 current_version = "0.1.0"
