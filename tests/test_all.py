@@ -704,3 +704,68 @@ class TestNoiseNormalizationComplexFrom:
 
         result = benchmark(run)
         np.testing.assert_allclose(result, ref)
+
+
+# log_likelihood_function
+class TestLogLikelihoodFunction:
+    M = 1000
+    N = 100
+    K = 200
+    P = 10
+
+    @pytest.fixture
+    def setup_data(self):
+        """Fixture to set up test data"""
+        M = self.M
+        N = self.N
+        K = self.K
+        P = self.P
+
+        dirty_image = gen_dirty_image(M)
+        w_tilde = gen_w_tilde(M)
+        noise_map = gen_noise_map(K)
+        mapping_matrix = gen_mapping_matrix(M)
+        neighbors, neighbors_sizes = gen_neighbors(M, P)
+
+        ref = original.log_likelihood_function(
+            dirty_image,
+            w_tilde,
+            noise_map,
+            mapping_matrix,
+            neighbors,
+            neighbors_sizes,
+        )
+        return {
+            "dirty_image": dirty_image,
+            "w_tilde": w_tilde,
+            "noise_map": noise_map,
+            "mapping_matrix": mapping_matrix,
+            "neighbors": neighbors,
+            "neighbors_sizes": neighbors_sizes,
+            "ref": ref,
+        }
+    
+    @pytest.mark.benchmark(group="log_likelihood_function")
+    def test_log_likelihood_function_original(self, setup_data, benchmark):
+        """Benchmark the original log_likelihood_function function"""
+        dirty_image = setup_data["dirty_image"]
+        w_tilde = setup_data["w_tilde"]
+        noise_map = setup_data["noise_map"]
+        mapping_matrix = setup_data["mapping_matrix"]
+        neighbors = setup_data["neighbors"]
+        neighbors_sizes = setup_data["neighbors_sizes"]
+
+        ref = setup_data["ref"]
+
+        def run():
+            return original.log_likelihood_function(
+                dirty_image,
+                w_tilde,
+                noise_map,
+                mapping_matrix,
+                neighbors,
+                neighbors_sizes,
+            )
+
+        result = benchmark(run)
+        np.testing.assert_allclose(result, ref)
