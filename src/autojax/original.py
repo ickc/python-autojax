@@ -359,6 +359,7 @@ def noise_normalization_complex_from(noise_map: np.ndarray) -> float:
 def log_likelihood_function(
     dirty_image: np.ndarray[tuple[int], np.float64],
     w_tilde: np.ndarray[tuple[int, int], np.float64],
+    data: np.ndarray[tuple[int], np.complex128],
     noise_map: np.ndarray[tuple[int], np.complex128],
     mapping_matrix: np.ndarray[tuple[int, int], np.float64],
     neighbors: np.ndarray[tuple[int, int], np.int64],
@@ -376,12 +377,22 @@ def log_likelihood_function(
     curvature_reg_matrix = curvature_matrix + regularization_matrix
     reconstruction = reconstruction_positive_negative_from(data_vector, curvature_reg_matrix)
 
-    # TODO: Need to double check the chi_squared term.
-    chi_squared_term_1 = np.trace(curvature_matrix)
-    chi_squared_term_2 = -np.multiply(
-        2.0, np.dot(mapping_matrix, dirty_image)
-    ).sum()  # Need to double check dirty_image is the right input.
-    chi_squared = chi_squared_term_1 + chi_squared_term_2
+    chi_squared_term_1 = np.linalg.multi_dot(
+        [
+            reconstruction.T,  # NOTE: shape = (M, )
+            curvature_matrix,  # NOTE: shape = (M, M)
+            reconstruction,  # NOTE: shape = (M, )
+        ]
+    )
+    chi_squared_term_2 = -2.0 * np.linalg.multi_dot(
+        [reconstruction.T, data_vector]  # NOTE: shape = (M, )  # NOTE: i.e. dirty_image
+    )
+    chi_squared_term_3 = np.add(  # NOTE: i.e. noise_normalization
+        np.sum(data.real**2.0 / noise_map.real**2.0),
+        np.sum(data.imag**2.0 / noise_map.imag**2.0),
+    )
+
+    chi_squared = chi_squared_term_1 + chi_squared_term_2 + chi_squared_term_3
 
     regularization_term = np.matmul(reconstruction.T, np.matmul(regularization_matrix, reconstruction))
 

@@ -29,6 +29,7 @@ def external():
     del real_space_mask, dataset_type, dataset_path
     dirty_image = dataset.w_tilde.dirty_image
     w_tilde = dataset.w_tilde.w_matrix
+    data = dataset.data
     noise_map = dataset.noise_map
 
     mass = al.mp.Isothermal(
@@ -63,6 +64,7 @@ def external():
     return (
         dirty_image,
         w_tilde,
+        data,
         noise_map,
         mapping_matrix,
         neighbors,
@@ -71,16 +73,17 @@ def external():
 
 
 def main() -> float:
-    ref = -3028.5513427463716
+    ref = -13401.986947103405
 
-    dirty_image, w_tilde, noise_map, mapping_matrix, neighbors, neighbors_sizes = external()
-    for name in ("dirty_image", "w_tilde", "noise_map", "mapping_matrix", "neighbors", "neighbors_sizes"):
+    dirty_image, w_tilde, data, noise_map, mapping_matrix, neighbors, neighbors_sizes = external()
+    for name in ("dirty_image", "w_tilde", "data", "noise_map", "mapping_matrix", "neighbors", "neighbors_sizes"):
         print("=========", name, "=========")
         var = np.array(locals()[name])
         print(np.info(var))
     log_likelihood = log_likelihood_function(
         dirty_image,
         w_tilde,
+        data,
         noise_map,
         mapping_matrix,
         neighbors,
@@ -92,6 +95,7 @@ def main() -> float:
     log_likelihood_numba = log_likelihood_function_numba(
         np.array(dirty_image),
         w_tilde,
+        np.array(data),
         np.array(noise_map),
         mapping_matrix,
         neighbors,
@@ -103,6 +107,7 @@ def main() -> float:
     log_likelihood_jax = log_likelihood_function_jax(
         np.array(dirty_image),
         w_tilde,
+        np.array(data),
         np.array(noise_map),
         mapping_matrix,
         neighbors,

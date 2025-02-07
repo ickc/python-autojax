@@ -131,8 +131,14 @@ def gen_data_vector(N: int) -> np.ndarray[tuple[int], np.float64]:
     return rng.random(N)
 
 
+def gen_data(N: int) -> np.ndarray[tuple[int], np.complex128]:
+    """Generate random data map of size N."""
+    rng = np.random.default_rng(deterministic_seed("data", N))
+    return rng.random(2 * N).view(np.complex128)
+
+
 def gen_noise_map(N: int) -> np.ndarray[tuple[int], np.complex128]:
-    """Generate random real noise map of size N."""
+    """Generate random noise map of size N."""
     rng = np.random.default_rng(deterministic_seed("noise_map", N))
     return rng.random(2 * N).view(np.complex128)
 
@@ -723,6 +729,7 @@ class TestLogLikelihoodFunction:
 
         dirty_image = gen_dirty_image(M)
         w_tilde = gen_w_tilde(M)
+        data = gen_data(K)
         noise_map = gen_noise_map(K)
         mapping_matrix = gen_mapping_matrix(M)
         neighbors, neighbors_sizes = gen_neighbors(M, P)
@@ -730,6 +737,7 @@ class TestLogLikelihoodFunction:
         ref = original.log_likelihood_function(
             dirty_image,
             w_tilde,
+            data,
             noise_map,
             mapping_matrix,
             neighbors,
@@ -738,6 +746,7 @@ class TestLogLikelihoodFunction:
         return {
             "dirty_image": dirty_image,
             "w_tilde": w_tilde,
+            "data": data,
             "noise_map": noise_map,
             "mapping_matrix": mapping_matrix,
             "neighbors": neighbors,
@@ -750,6 +759,7 @@ class TestLogLikelihoodFunction:
         """Benchmark the original log_likelihood_function function"""
         dirty_image = setup_data["dirty_image"]
         w_tilde = setup_data["w_tilde"]
+        data = setup_data["data"]
         noise_map = setup_data["noise_map"]
         mapping_matrix = setup_data["mapping_matrix"]
         neighbors = setup_data["neighbors"]
@@ -761,6 +771,7 @@ class TestLogLikelihoodFunction:
             return original.log_likelihood_function(
                 dirty_image,
                 w_tilde,
+                data,
                 noise_map,
                 mapping_matrix,
                 neighbors,
@@ -775,6 +786,7 @@ class TestLogLikelihoodFunction:
         """Benchmark the numba log_likelihood_function function"""
         dirty_image = setup_data["dirty_image"]
         w_tilde = setup_data["w_tilde"]
+        data = setup_data["data"]
         noise_map = setup_data["noise_map"]
         mapping_matrix = setup_data["mapping_matrix"]
         neighbors = setup_data["neighbors"]
@@ -786,6 +798,7 @@ class TestLogLikelihoodFunction:
             return numba.log_likelihood_function(
                 dirty_image,
                 w_tilde,
+                data,
                 noise_map,
                 mapping_matrix,
                 neighbors,
@@ -800,6 +813,7 @@ class TestLogLikelihoodFunction:
         """Benchmark the jax log_likelihood_function function"""
         dirty_image = setup_data["dirty_image"]
         w_tilde = setup_data["w_tilde"]
+        data = setup_data["data"]
         noise_map = setup_data["noise_map"]
         mapping_matrix = setup_data["mapping_matrix"]
         neighbors = setup_data["neighbors"]
@@ -811,6 +825,7 @@ class TestLogLikelihoodFunction:
             return jax.log_likelihood_function(
                 dirty_image,
                 w_tilde,
+                data,
                 noise_map,
                 mapping_matrix,
                 neighbors,
