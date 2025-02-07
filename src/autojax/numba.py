@@ -363,6 +363,42 @@ def log_likelihood_function(
     neighbors: np.ndarray[tuple[int, int], np.int64],
     neighbors_sizes: np.ndarray[tuple[int], np.int64],
 ) -> float:
+    """Calculates the log likelihood of interferometer data given a model.
+
+    This function combines several steps:
+    1. Calculates noise normalization from the complex noise map
+    2. Computes the curvature matrix using w_tilde and mapping matrix
+    3. Creates a regularization matrix using constant regularization
+    4. Solves for the reconstruction allowing positive and negative values
+    5. Combines terms to compute the final log likelihood
+
+    Parameters
+    ----------
+    dirty_image : ndarray, shape (N,), dtype=float64
+        The dirty image used to compute the data vector
+    w_tilde : ndarray, shape (M, M), dtype=float64
+        Matrix encoding the NUFFT of every pair of image pixels given the noise map
+    data : ndarray, shape (N,), dtype=complex128
+        The complex interferometer data being fitted
+    noise_map : ndarray, shape (N,), dtype=complex128
+        The complex noise map of the data
+    mapping_matrix : ndarray, shape (M, K), dtype=float64
+        Matrix representing mappings between sub-grid pixels and pixelization pixels
+    neighbors : ndarray, shape (P, Q), dtype=int64
+        Array providing indices of neighbors for each pixel
+    neighbors_sizes : ndarray, shape (P,), dtype=int64
+        Array giving number of neighbors for each pixel
+
+    Returns
+    -------
+    float
+        The log likelihood value of the model fit to the data
+
+    Notes
+    -----
+    The log likelihood calculation follows the formalism described in Warren & Dye 2003
+    (https://arxiv.org/pdf/astro-ph/0302587.pdf) with additional terms for interferometric data.
+    """
     coefficient = 1.0
 
     noise_normalization = noise_normalization_complex_from(noise_map)
