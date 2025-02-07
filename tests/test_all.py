@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 
 import numpy as np
+from jax import numpy as jnp
 import pytest
 
 from autojax import jax, numba, original
@@ -203,9 +204,9 @@ class TestMask2DCircularFrom:
     def test_mask_2d_circular_from_jax(self, setup_data, benchmark):
         """Benchmark the jax mask_2d_circular_from function"""
         shape_native = setup_data["shape_native"]
-        pixel_scales = setup_data["pixel_scales"]
-        radius = setup_data["radius"]
-        centre = setup_data["centre"]
+        pixel_scales = jnp.array(setup_data["pixel_scales"])
+        radius = jnp.array(setup_data["radius"])
+        centre = jnp.array(setup_data["centre"])
 
         ref = setup_data["ref"]
 
@@ -297,11 +298,11 @@ class TestWTildeDataInterferometer:
     @pytest.mark.benchmark(group="w_tilde_data_interferometer_from")
     def test_w_tilde_data_interferometer_from_jax(self, setup_data, benchmark):
         """Benchmark the jax w_tilde_data_interferometer_from function"""
-        visibilities_real = setup_data["visibilities_real"]
-        noise_map_real = setup_data["noise_map_real"]
-        uv_wavelengths = setup_data["uv_wavelengths"]
-        grid_radians_slim = setup_data["grid_radians_slim"]
-        native_index_for_slim_index = setup_data["native_index_for_slim_index"]
+        visibilities_real = jnp.array(setup_data["visibilities_real"])
+        noise_map_real = jnp.array(setup_data["noise_map_real"])
+        uv_wavelengths = jnp.array(setup_data["uv_wavelengths"])
+        grid_radians_slim = jnp.array(setup_data["grid_radians_slim"])
+        native_index_for_slim_index = jnp.array(setup_data["native_index_for_slim_index"])
 
         ref = setup_data["ref"]
 
@@ -385,9 +386,9 @@ class TestWTildeCurvatureInterferometer:
     @pytest.mark.benchmark(group="w_tilde_curvature_interferometer_from")
     def test_w_tilde_curvature_interferometer_from_jax(self, setup_data, benchmark):
         """Benchmark the jax w_tilde_curvature_interferometer_from function"""
-        noise_map_real = setup_data["noise_map_real"]
-        uv_wavelengths = setup_data["uv_wavelengths"]
-        grid_radians_slim = setup_data["grid_radians_slim"]
+        noise_map_real = jnp.array(setup_data["noise_map_real"])
+        uv_wavelengths = jnp.array(setup_data["uv_wavelengths"])
+        grid_radians_slim = jnp.array(setup_data["grid_radians_slim"])
 
         ref = setup_data["ref"]
 
@@ -451,8 +452,8 @@ class TestDataVectorFrom:
     @pytest.mark.benchmark(group="data_vector_from")
     def test_data_vector_from_jax(self, setup_data, benchmark):
         """Benchmark the jax data_vector_from function"""
-        mapping_matrix = setup_data["mapping_matrix"]
-        dirty_image = setup_data["dirty_image"]
+        mapping_matrix = jnp.array(setup_data["mapping_matrix"])
+        dirty_image = jnp.array(setup_data["dirty_image"])
 
         ref = setup_data["ref"]
 
@@ -513,8 +514,8 @@ class TestCurvatureMatrixViaWTildeFrom:
     @pytest.mark.benchmark(group="curvature_matrix_via_w_tilde_from")
     def test_curvature_matrix_via_w_tilde_from_jax(self, setup_data, benchmark):
         """Benchmark the jax curvature_matrix_via_w_tilde_from function"""
-        w_tilde = setup_data["w_tilde"]
-        mapping_matrix = setup_data["mapping_matrix"]
+        w_tilde = jnp.array(setup_data["w_tilde"])
+        mapping_matrix = jnp.array(setup_data["mapping_matrix"])
 
         ref = setup_data["ref"]
 
@@ -580,8 +581,8 @@ class TestConstantRegularizationMatrixFrom:
     def test_constant_regularization_matrix_from_jax(self, setup_data, benchmark):
         """Benchmark the jax constant_regularization_matrix_from function"""
         coefficient = self.coefficient
-        neighbors = setup_data["neighbors"]
-        neighbors_sizes = setup_data["neighbors_sizes"]
+        neighbors = jnp.array(setup_data["neighbors"])
+        neighbors_sizes = jnp.array(setup_data["neighbors_sizes"])
 
         ref = setup_data["ref"]
 
@@ -643,8 +644,8 @@ class TestReconstructionPositiveNegativeFrom:
     @pytest.mark.benchmark(group="reconstruction_positive_negative_from")
     def test_reconstruction_positive_negative_from_jax(self, setup_data, benchmark):
         """Benchmark the jax reconstruction_positive_negative_from function"""
-        data_vector = setup_data["data_vector"]
-        curvature_matrix = setup_data["curvature_matrix"]
+        data_vector = jnp.array(setup_data["data_vector"])
+        curvature_matrix = jnp.array(setup_data["curvature_matrix"])
 
         ref = setup_data["ref"]
 
@@ -701,7 +702,7 @@ class TestNoiseNormalizationComplexFrom:
     @pytest.mark.benchmark(group="noise_normalization_complex_from")
     def test_noise_normalization_complex_from_jax(self, setup_data, benchmark):
         """Benchmark the jax noise_normalization_complex_from function"""
-        noise_map = setup_data["noise_map"]
+        noise_map = jnp.array(setup_data["noise_map"])
 
         ref = setup_data["ref"]
 
@@ -811,13 +812,13 @@ class TestLogLikelihoodFunction:
     @pytest.mark.benchmark(group="log_likelihood_function")
     def test_log_likelihood_function_jax(self, setup_data, benchmark):
         """Benchmark the jax log_likelihood_function function"""
-        dirty_image = setup_data["dirty_image"]
-        w_tilde = setup_data["w_tilde"]
-        data = setup_data["data"]
-        noise_map = setup_data["noise_map"]
-        mapping_matrix = setup_data["mapping_matrix"]
-        neighbors = setup_data["neighbors"]
-        neighbors_sizes = setup_data["neighbors_sizes"]
+        dirty_image = jnp.array(setup_data["dirty_image"])
+        w_tilde = jnp.array(setup_data["w_tilde"])
+        data = jnp.array(setup_data["data"])
+        noise_map = jnp.array(setup_data["noise_map"])
+        mapping_matrix = jnp.array(setup_data["mapping_matrix"])
+        neighbors = jnp.array(setup_data["neighbors"])
+        neighbors_sizes = jnp.array(setup_data["neighbors_sizes"])
 
         ref = setup_data["ref"]
 
