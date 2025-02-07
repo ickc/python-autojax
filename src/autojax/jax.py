@@ -381,11 +381,9 @@ def log_likelihood_function(
     data_vector = data_vector_from(mapping_matrix, dirty_image)
     reconstruction = reconstruction_positive_negative_from(data_vector, curvature_reg_matrix)
 
-    regularization_term_plus_chi_squared = (
-        jnp.square(data.real / noise_map.real).sum()
-        + jnp.square(data.imag / noise_map.imag).sum()
-        - reconstruction @ data_vector
-    )
+    chi_real = data.real / noise_map.real
+    chi_imag = data.imag / noise_map.imag
+    regularization_term_plus_chi_squared = chi_real @ chi_real + chi_imag @ chi_imag - reconstruction @ data_vector
 
     log_curvature_reg_matrix_term = jnp.linalg.slogdet(curvature_reg_matrix)[1]
     log_regularization_matrix_term = jnp.linalg.slogdet(regularization_matrix)[1]
