@@ -3,8 +3,8 @@ from __future__ import annotations
 import hashlib
 
 import numpy as np
-from jax import numpy as jnp
 import pytest
+from jax import numpy as jnp
 
 from autojax import jax, numba, original
 
