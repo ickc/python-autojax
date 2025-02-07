@@ -345,8 +345,7 @@ def noise_normalization_complex_from(
     noise_map
         The masked noise-map of the dataset.
     """
-    N = noise_map.size
-    return 2.0 * (N * LOG_TWO_PI + np.log(np.abs(noise_map.view(np.float64))).sum())
+    return 2.0 * (noise_map.size * LOG_TWO_PI + np.log(np.abs(noise_map.view(np.float64))).sum())
 
 
 @jit(
