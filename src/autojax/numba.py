@@ -378,19 +378,16 @@ def log_likelihood_function(
     curvature_reg_matrix = curvature_matrix + regularization_matrix
     data_vector = data_vector_from(mapping_matrix, dirty_image)
     reconstruction = reconstruction_positive_negative_from(data_vector, curvature_reg_matrix)
-    regularization_term = reconstruction.T @ regularization_matrix @ reconstruction
 
-    chi_squared = (
-        reconstruction.T @ (curvature_matrix @ reconstruction - 2.0 * data_vector)
-        + np.square(data.view(np.float64) / noise_map.view(np.float64)).sum()
+    regularization_term_plus_chi_squared = (
+        np.square(data.view(np.float64) / noise_map.view(np.float64)).sum() - reconstruction @ data_vector
     )
 
     log_curvature_reg_matrix_term = np.linalg.slogdet(curvature_reg_matrix)[1]
     log_regularization_matrix_term = np.linalg.slogdet(regularization_matrix)[1]
 
     return -0.5 * (
-        chi_squared
-        + regularization_term
+        regularization_term_plus_chi_squared
         + log_curvature_reg_matrix_term
         - log_regularization_matrix_term
         + noise_normalization
