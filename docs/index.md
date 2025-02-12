@@ -3,6 +3,7 @@
 :numbered:
 :hidden:
 
+api/modules
 changelog
 ```
 
