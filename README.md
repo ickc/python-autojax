@@ -11,3 +11,38 @@
 [![Development Status](https://img.shields.io/pypi/status/autojax.svg)](https://pypi.python.org/pypi/autojax/)
 [![Downloads](https://img.shields.io/pypi/dm/autojax.svg)](https://pypi.python.org/pypi/autojax/)
 ![License](https://img.shields.io/pypi/l/autojax.svg) -->
+
+# Installing the project
+
+## pip
+
+```sh
+pip install -e .[tests]
+```
+
+## conda/mamba
+
+```sh
+conda env create -f environment.yml
+conda activate autojax
+# update using
+conda env update --name autojax --file environment.yml --prune
+```
+
+## pixi
+
+```sh
+pixi install
+# prepend everything you run by pixi run, such as
+pixi run pytest
+```
+
+# Running tests and benchmark
+
+```sh
+pytest
+# or if you use pixi
+pixi run pytest
+```
+
+This should runs the tests and also give you benchmark information comparing different implementations.
