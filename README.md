@@ -12,6 +12,14 @@
 [![Downloads](https://img.shields.io/pypi/dm/autojax.svg)](https://pypi.python.org/pypi/autojax/)
 ![License](https://img.shields.io/pypi/l/autojax.svg) -->
 
+# Introduction
+
+This is a small self-contained repo for the 3 months project "DiRAC: revealing the nature of dark matter with the James Webb space telescope and JAX". It is organized in 3 modules. `original` is copied from [Jammy2211/dirac_rse_interferometer](https://github.com/Jammy2211/dirac_rse_interferometer) (which itself is copied from various other repos such as AutoGalaxy and AutoLens), and then they are ported to JAX in the `jax` module. While the `original` is already implemented in Numba, a `numba` module is also provided here, mainly as a starting point to port from `original` to something more vectorized first. Often time the `jax` implementation is the same as the `numba` implementation here, or a close variant of it due to differences between Numba and JAX.
+
+As part of the goal to port to JAX implementation is to speed up, benchmark is provided to compare the 3 implementations. See instructions below to see how to run it.
+
+For a logbook style repo that contains every notes about the project and how to run the AutoGalaxy family of softwares, see [ickc/log-PyAutoLens](https://github.com/ickc/log-PyAutoLens).
+
 # Installing the project
 
 ## pip
