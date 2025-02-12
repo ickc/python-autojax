@@ -1,0 +1,35 @@
+[project]
+authors = ["Kolen Cheung <christian.kolen@gmail.com>"]
+channels = ["conda-forge"]
+description = "DiRAC: revealing the nature of dark matter with the James Webb space telescope and JAX"
+name = "autojax"
+platforms = ["osx-arm64", "linux-64"]
+version = "0.1.0"
+
+[tasks]
+
+[dependencies]
+python = ">=3.9"
+numpy = "*"
+numba = "*"
+jax = "*"
+jaxlib = "*"
+# build
+poetry = "*"
+# extras
+bump-my-version = "*"
+# tests
+coverage = "*"
+pytest = "*"
+pytest-benchmark = "*"
+# docs
+furo = "*"
+linkify-it-py = "*"
+myst-parser = "*"
+sphinx = "*"
+sphinx-autobuild = "*"
+sphinxcontrib-apidoc = "*"
+
+[pypi-dependencies]
+sphinx-last-updated-by-git = "*"
+autojax = { path = ".", editable = true}
