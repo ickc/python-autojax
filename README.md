@@ -18,7 +18,7 @@ This is a small self-contained repo for the 3 months project "DiRAC: revealing t
 
 As part of the goal to port to JAX implementation is to speed up, benchmark is provided to compare the 3 implementations. See instructions below to see how to run it.
 
-For a logbook style repo that contains every notes about the project and how to run the AutoGalaxy family of softwares, see [ickc/log-PyAutoLens](https://github.com/ickc/log-PyAutoLens).
+For a logbook style repo that contains every notes about the project and how to run the AutoGalaxy family of softwares, see [ickc/log-PyAutoLens](https://github.com/ickc/log-PyAutoLens). There's some scripts under `external/` here that can only be run using the environment documented there, as it uses some external (to us) dependencies recorded as git submodules over there.
 
 # Installing the project
 
