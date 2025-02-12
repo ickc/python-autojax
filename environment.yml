@@ -1,32 +1,25 @@
-# run the following command to create a conda environment
-# conda env create -f environment.yml
-# conda activate autojax
-# update using
-# conda env update --name autojax --file environment.yml --prune
-name: autojax
+name: default
 channels:
-  - conda-forge
+- conda-forge
+- nodefaults
 dependencies:
-  - python >=3.9
-  - numpy
-  - numba
-  - jax
-  - jaxlib
-  # build
-  - poetry
-  # extras
-  - bump-my-version
-  # tests
-  - coverage
-  - pytest
-  - pytest-benchmark
-  # docs
-  - furo
-  - linkify-it-py
-  - myst-parser
-  - sphinx
-  - sphinx-autobuild
-  - sphinxcontrib-apidoc
-  - pip:
-    - sphinx-last-updated-by-git
-    - -e .
+- python >=3.9
+- numpy *
+- numba *
+- jax *
+- jaxlib *
+- poetry *
+- bump-my-version *
+- coverage *
+- pytest *
+- pytest-benchmark *
+- furo *
+- linkify-it-py *
+- myst-parser *
+- sphinx *
+- sphinx-autobuild *
+- sphinxcontrib-apidoc *
+- pip
+- pip:
+  - sphinx-last-updated-by-git
+  - -e .
