@@ -2,3 +2,7 @@
 *.pyc
 dist/
 docs/api/
+
+# pixi environments
+.pixi
+*.egg-info
