@@ -364,9 +364,7 @@ class TestWTildeCurvatureInterferometer:
         result = benchmark(run)
         np.testing.assert_allclose(result, ref)
 
-    @pytest.mark.benchmark(group="w_tilde_curvature_interferometer_from")
-    def test_w_tilde_curvature_interferometer_from_numba(self, setup_data, benchmark):
-        """Benchmark the numba w_tilde_curvature_interferometer_from function"""
+    def tilde_curvature_interferometer_from_numba(self, setup_data):
         noise_map_real = setup_data["noise_map_real"]
         uv_wavelengths = setup_data["uv_wavelengths"]
         grid_radians_slim = setup_data["grid_radians_slim"]
@@ -380,8 +378,21 @@ class TestWTildeCurvatureInterferometer:
                 grid_radians_slim,
             )
 
-        result = benchmark(run)
+        return run, ref
+
+    @pytest.mark.unittest
+    def test_w_tilde_curvature_interferometer_from_numba(self, setup_data):
+        """Test the numba w_tilde_curvature_interferometer_from function"""
+        run, ref = self.tilde_curvature_interferometer_from_numba(setup_data)
+        result = run()
         np.testing.assert_allclose(result, ref)
+
+
+    @pytest.mark.benchmark(group="w_tilde_curvature_interferometer_from")
+    def test_benchmark_w_tilde_curvature_interferometer_from_numba(self, setup_data, benchmark):
+        """Benchmark the numba w_tilde_curvature_interferometer_from function"""
+        run, _ = self.tilde_curvature_interferometer_from_numba(setup_data)
+        benchmark(run)
 
     @pytest.mark.benchmark(group="w_tilde_curvature_interferometer_from")
     def test_w_tilde_curvature_interferometer_from_jax(self, setup_data, benchmark):
@@ -414,13 +425,12 @@ class TestDataVectorFrom:
         dirty_image = gen_dirty_image(N)
 
         ref = original.data_vector_from(mapping_matrix, dirty_image)
-
         return {
             "mapping_matrix": mapping_matrix,
             "dirty_image": dirty_image,
             "ref": ref,
         }
-
+    
     @pytest.mark.benchmark(group="data_vector_from")
     def test_data_vector_from_original(self, setup_data, benchmark):
         """Benchmark the original data_vector_from function"""
@@ -716,7 +726,6 @@ class TestNoiseNormalizationComplexFrom:
 # log_likelihood_function
 class TestLogLikelihoodFunction:
     M = 1000
-    N = 100
     K = 200
     P = 10
 
@@ -724,7 +733,6 @@ class TestLogLikelihoodFunction:
     def setup_data(self):
         """Fixture to set up test data"""
         M = self.M
-        self.N
         K = self.K
         P = self.P
 

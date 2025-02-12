@@ -106,7 +106,7 @@ show_missing = true
 precision = 2
 
 [tool.pytest.ini_options]
-
+markers = 'unittest: run unit tests only'
 python_files = [
     'test_*.py',
     '*_test.py',
