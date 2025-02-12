@@ -1,0 +1,7 @@
+version: "3"
+
+tasks:
+  export:
+    desc: "Export a conda environment file."
+    cmds:
+      - pixi project export conda-environment environment.yml
