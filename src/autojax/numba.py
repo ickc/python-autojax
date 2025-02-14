@@ -131,19 +131,11 @@ def w_tilde_data_interferometer_from(
         efficient calculation of the data vector.
     """
     g_i = grid_radians_slim.reshape(-1, 1, 2)
-    u_j = uv_wavelengths.reshape(1, -1, 2)
-    return (
-        # (1, j∊N)
-        np.square(np.square(noise_map_real) / visibilities_real).reshape(1, -1)
-        * np.cos(
-            TWO_PI
-            *
-            # (i∊M, j∊N)
-            (g_i[:, :, 0] * u_j[:, :, 1] + g_i[:, :, 1] * u_j[:, :, 0])
-        )
-    ).sum(
-        axis=1
-    )  # sum over j
+    # assume M > N to put TWO_PI multiplication there
+    u_k = TWO_PI * uv_wavelengths.reshape(1, -1, 2)
+    # A_ik, i<M, k<N
+    # A = g_i[:, :, 0] * u_k[:, :, 1] + g_i[:, :, 1] * u_k[:, :, 0]
+    return np.cos(g_i[:, :, 0] * u_k[:, :, 1] + g_i[:, :, 1] * u_k[:, :, 0]) @ np.square(np.square(noise_map_real) / visibilities_real)
 
 
 @jit("f8[:, ::1](f8[::1], f8[:, ::1], f8[:, ::1])", nopython=True, nogil=True, parallel=True)
