@@ -115,11 +115,11 @@ def w_tilde_data_interferometer_from(
 
     Parameters
     ----------
-    visibilities_real : ndarray, shape (N,), dtype=float64
+    visibilities_real : ndarray, shape (K,), dtype=float64
         The two dimensional masked image of values which `w_tilde_data` is computed from.
-    noise_map_real : ndarray, shape (N,), dtype=float64
+    noise_map_real : ndarray, shape (K,), dtype=float64
         The two dimensional masked noise-map of values which `w_tilde_data` is computed from.
-    uv_wavelengths : ndarray, shape (N, 2), dtype=float64
+    uv_wavelengths : ndarray, shape (K, 2), dtype=float64
     grid_radians_slim : ndarray, shape (M, 2), dtype=float64
     native_index_for_slim_index : ndarray, shape (M, 2), dtype=int64
         An array that maps pixels from the slimmed array to the native array.
@@ -130,12 +130,14 @@ def w_tilde_data_interferometer_from(
         A matrix that encodes the PSF convolution values between the imaging divided by the noise map**2 that enables
         efficient calculation of the data vector.
     """
-    g_i = grid_radians_slim.reshape(-1, 1, 2)
-    # assume M > N to put TWO_PI multiplication there
-    u_k = TWO_PI * uv_wavelengths.reshape(1, -1, 2)
+    # assume M < K to put TWO_PI multiplication there
+    g_i = TWO_PI * grid_radians_slim.reshape(-1, 1, 2)
+    u_k = uv_wavelengths.reshape(1, -1, 2)
     # A_ik, i<M, k<N
     # A = g_i[:, :, 0] * u_k[:, :, 1] + g_i[:, :, 1] * u_k[:, :, 0]
-    return np.cos(g_i[:, :, 0] * u_k[:, :, 1] + g_i[:, :, 1] * u_k[:, :, 0]) @ np.square(np.square(noise_map_real) / visibilities_real)
+    return np.cos(g_i[:, :, 0] * u_k[:, :, 1] + g_i[:, :, 1] * u_k[:, :, 0]) @ np.square(
+        np.square(noise_map_real) / visibilities_real
+    )
 
 
 @jit("f8[:, ::1](f8[::1], f8[:, ::1], f8[:, ::1])", nopython=True, nogil=True, parallel=True)
@@ -163,9 +165,9 @@ def w_tilde_curvature_interferometer_from(
 
     Parameters
     ----------
-    noise_map_real : ndarray, shape (N,), dtype=float64
+    noise_map_real : ndarray, shape (K,), dtype=float64
         The real noise-map values of the interferometer data.
-    uv_wavelengths : ndarray, shape (N, 2), dtype=float64
+    uv_wavelengths : ndarray, shape (K, 2), dtype=float64
         The wavelengths of the coordinates in the uv-plane for the interferometer dataset that is to be Fourier
         transformed.
     grid_radians_slim : ndarray, shape (M, 2), dtype=float64
@@ -174,13 +176,13 @@ def w_tilde_curvature_interferometer_from(
 
     Returns
     -------
-    ndarray : ndarray, shape (M, M), dtype=float64
+    curvature_matrix : ndarray, shape (M, M), dtype=float64
         A matrix that encodes the NUFFT values between the noise map that enables efficient calculation of the curvature
         matrix.
     """
-    g_i = grid_radians_slim.reshape(-1, 1, 2)
-    # assume M > N to put TWO_PI multiplication there
-    u_k = TWO_PI * uv_wavelengths.reshape(1, -1, 2)
+    # assume M < K to put TWO_PI multiplication there
+    g_i = TWO_PI * grid_radians_slim.reshape(-1, 1, 2)
+    u_k = uv_wavelengths.reshape(1, -1, 2)
     # A_ik, i<M, k<N
     A = g_i[:, :, 0] * u_k[:, :, 1] + g_i[:, :, 1] * u_k[:, :, 0]
 
@@ -198,8 +200,18 @@ def data_vector_from(
     dirty_image: np.ndarray[tuple[int], np.float64],
 ) -> np.ndarray[tuple[int], np.float64]:
     """
-    The `data_vector` is a 1D vector whose values are solved for by the simultaneous linear equations constructed
-    by this object.
+    Parameters
+    ----------
+    mapping_matrix : ndarray, shape (M, S), dtype=float64
+        Matrix representing mappings between sub-grid pixels and pixelization pixels
+    dirty_image : ndarray, shape (M,), dtype=float64
+        The dirty image used to compute the data vector
+
+    Returns
+    -------
+    data_vector : ndarray, shape (S,), dtype=float64
+        The `data_vector` is a 1D vector whose values are solved for by the simultaneous linear equations constructed
+        by this object.
 
     The linear algebra is described in the paper https://arxiv.org/pdf/astro-ph/0302587.pdf), where the
     data vector is given by equation (4) and the letter D.
@@ -227,15 +239,15 @@ def curvature_matrix_via_w_tilde_from(
 
     Parameters
     ----------
-    w_tilde
+    w_tilde : ndarray, shape (M, M), dtype=float64
         A matrix of dimensions [image_pixels, image_pixels] that encodes the convolution or NUFFT of every image pixel
         pair on the noise map.
-    mapping_matrix
+    mapping_matrix : ndarray, shape (M, S), dtype=float64
         The matrix representing the mappings between sub-grid pixels and pixelization pixels.
 
     Returns
     -------
-    ndarray
+    curvature_matrix : ndarray, shape (S, S), dtype=float64
         The curvature matrix `F` (see Warren & Dye 2003).
     """
     return mapping_matrix.T @ w_tilde @ mapping_matrix
@@ -257,24 +269,24 @@ def constant_regularization_matrix_from(
     ----------
     coefficient
         The regularization coefficients which controls the degree of smoothing of the inversion reconstruction.
-    neighbors
+    neighbors : ndarray, shape (S, P), dtype=int64
         An array of length (total_pixels) which provides the index of all neighbors of every pixel in
         the Voronoi grid (entries of -1 correspond to no neighbor).
-    neighbors_sizes
+    neighbors_sizes : ndarray, shape (S,), dtype=int64
         An array of length (total_pixels) which gives the number of neighbors of every pixel in the
         Voronoi grid.
 
     Returns
     -------
-    np.ndarray
+    regularization_matrix : ndarray, shape (S, S), dtype=float64
         The regularization matrix computed using Regularization where the effective regularization
         coefficient of every source pixel is the same.
     """
-    M = neighbors_sizes.size
+    S = neighbors_sizes.size
     regularization_coefficient = coefficient * coefficient
 
     regularization_matrix = np.diag(1e-8 + regularization_coefficient * neighbors_sizes)
-    for i in range(M):
+    for i in range(S):
         for j in range(neighbors_sizes[i]):
             regularization_matrix[i, neighbors[i, j]] -= regularization_coefficient
     return regularization_matrix
@@ -304,21 +316,14 @@ def reconstruction_positive_negative_from(
 
     Parameters
     ----------
-    data_vector
+    data_vector : ndarray, shape (S,), dtype=float64
         The `data_vector` D which is solved for.
-    curvature_reg_matrix
+    curvature_reg_matrix : ndarray, shape (S, S), dtype=float64
         The sum of the curvature and regularization matrices.
-    mapper_param_range_list
-        A list of lists, where each list contains the range of values in the solution vector (reconstruction) that
-        correspond to values that are part of a mapper's mesh.
-    force_check_reconstruction
-        If `True`, the reconstruction is forced to check for solutions where all reconstructed values go to the same
-        value irrespective of the configuration file value.
 
     Returns
     -------
-    curvature_reg_matrix
-        The curvature_matrix plus regularization matrix, overwriting the curvature_matrix in memory.
+    reconstruction : ndarray, shape (S,), dtype=float64
     """
     return np.linalg.solve(curvature_reg_matrix, data_vector)
 
@@ -334,8 +339,12 @@ def noise_normalization_complex_from(
 
     Parameters
     ----------
-    noise_map
+    noise_map : ndarray, shape (K,), dtype=complex128
         The masked noise-map of the dataset.
+
+    Returns
+    -------
+    noise_normalization : float
     """
     return 2.0 * (noise_map.size * LOG_TWO_PI + np.log(np.abs(noise_map.view(np.float64))).sum())
 
@@ -366,19 +375,19 @@ def log_likelihood_function(
 
     Parameters
     ----------
-    dirty_image : ndarray, shape (N,), dtype=float64
+    dirty_image : ndarray, shape (M,), dtype=float64
         The dirty image used to compute the data vector
     w_tilde : ndarray, shape (M, M), dtype=float64
         Matrix encoding the NUFFT of every pair of image pixels given the noise map
-    data : ndarray, shape (N,), dtype=complex128
+    data : ndarray, shape (K,), dtype=complex128
         The complex interferometer data being fitted
-    noise_map : ndarray, shape (N,), dtype=complex128
+    noise_map : ndarray, shape (K,), dtype=complex128
         The complex noise map of the data
-    mapping_matrix : ndarray, shape (M, K), dtype=float64
+    mapping_matrix : ndarray, shape (M, S), dtype=float64
         Matrix representing mappings between sub-grid pixels and pixelization pixels
-    neighbors : ndarray, shape (P, Q), dtype=int64
+    neighbors : ndarray, shape (M, P), dtype=int64
         Array providing indices of neighbors for each pixel
-    neighbors_sizes : ndarray, shape (P,), dtype=int64
+    neighbors_sizes : ndarray, shape (M,), dtype=int64
         Array giving number of neighbors for each pixel
 
     Returns
@@ -390,22 +399,35 @@ def log_likelihood_function(
     -----
     The log likelihood calculation follows the formalism described in Warren & Dye 2003
     (https://arxiv.org/pdf/astro-ph/0302587.pdf) with additional terms for interferometric data.
+
+    Typical sizes: (716 -> 70000 means 716 in the test dataset, but can go up to 70000 in science case)
+
+    M = number of image pixels in real_space_mask = 716 -> ~70000
+    K = number of visibilitiies = 190 -> ~1e7 (but this is only used to compute w_tilde otuside the likelihood function)
+    P = number of neighbors = 10 -> 3 (for Delaunay) but can go up to 300 for Voronoi (but we can just focus on delaunay for now)
+    S = number of source pixels (e.g. reconstruction.shape) = 716 -> 1000
     """
     coefficient = 1.0
 
     noise_normalization = noise_normalization_complex_from(noise_map)
 
+    # (S, S)
     curvature_matrix = curvature_matrix_via_w_tilde_from(w_tilde, mapping_matrix)
 
+    # (S, S)
     regularization_matrix = constant_regularization_matrix_from(
         coefficient,
         neighbors,
         neighbors_sizes,
     )
+    # (S, S)
     curvature_reg_matrix = curvature_matrix + regularization_matrix
+    # (S,)
     data_vector = data_vector_from(mapping_matrix, dirty_image)
+    # (S,)
     reconstruction = reconstruction_positive_negative_from(data_vector, curvature_reg_matrix)
 
+    # (2K,)
     chi = data.view(np.float64) / noise_map.view(np.float64)
     regularization_term_plus_chi_squared = chi @ chi - reconstruction @ data_vector
 
