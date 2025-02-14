@@ -8,10 +8,10 @@ from jax import numpy as jnp
 
 from autojax import jax, numba, original
 
-M: int = 716
-K: int = 190
-P: int = 10
-S: int = 716
+M: int = 512
+K: int = 1024
+P: int = 32
+S: int = 256
 
 
 def create_M(n):
@@ -702,7 +702,7 @@ class TestLogLikelihoodFunction:
         data = gen_data(K)
         noise_map = gen_noise_map(K)
         mapping_matrix = gen_mapping_matrix(M, S)
-        neighbors, neighbors_sizes = gen_neighbors(M, P)
+        neighbors, neighbors_sizes = gen_neighbors(S, P)
 
         ref = original.log_likelihood_function(
             dirty_image,

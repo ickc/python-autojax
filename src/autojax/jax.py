@@ -395,9 +395,9 @@ def log_likelihood_function(
         The complex noise map of the data
     mapping_matrix : ndarray, shape (M, S), dtype=float64
         Matrix representing mappings between sub-grid pixels and pixelization pixels
-    neighbors : ndarray, shape (M, P), dtype=int64
+    neighbors : ndarray, shape (S, P), dtype=int64
         Array providing indices of neighbors for each pixel
-    neighbors_sizes : ndarray, shape (M,), dtype=int64
+    neighbors_sizes : ndarray, shape (S,), dtype=int64
         Array giving number of neighbors for each pixel
 
     Returns
