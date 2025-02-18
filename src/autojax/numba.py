@@ -412,8 +412,9 @@ def log_likelihood_function(
     """
     coefficient = 1.0
 
-    noise_normalization = noise_normalization_complex_from(noise_map)
+    noise_normalization: float = noise_normalization_complex_from(noise_map)
 
+    # (M, M)
     w_tilde = w_tilde_curvature_interferometer_from(
         np.ascontiguousarray(noise_map.real),
         uv_wavelengths,
