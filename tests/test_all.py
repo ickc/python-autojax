@@ -4,6 +4,7 @@ import hashlib
 import inspect
 from dataclasses import dataclass
 from functools import cached_property
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -36,10 +37,11 @@ def deterministic_seed(string: str, *numbers: int) -> int:
 
 
 @dataclass
-class DataGenerated:
-    """Generate data for testing."""
+class Data:
+    """Test data."""
 
     M: int = 512
+    N: int = 30
     K: int = 1024
     P: int = 32
     S: int = 256
@@ -77,6 +79,11 @@ class DataGenerated:
         return self.M, self.M
 
     @property
+    def shape_masked_pixels_2d(self) -> tuple[int, int]:
+        """Get the shape of the masked grid."""
+        return self.N, self.N
+
+    @property
     def pixel_scales(self) -> tuple[float, float]:
         """Get the pixel scales of the native grid."""
         return self._pixel_scales, self._pixel_scales
@@ -85,6 +92,165 @@ class DataGenerated:
     def centre(self) -> tuple[float, float]:
         """Get the centre of the native grid."""
         return self._centre, self._centre
+
+    @property
+    def mapping_matrix(self) -> np.ndarray[tuple[int, int], np.float64]:
+        raise NotImplementedError
+
+    @property
+    def dirty_image(self) -> np.ndarray[tuple[int], np.float64]:
+        raise NotImplementedError
+
+    @property
+    def uv_wavelengths(self) -> np.ndarray[tuple[int, int], np.float64]:
+        raise NotImplementedError
+
+    @property
+    def grid_radians_slim(self) -> np.ndarray[tuple[int, int], np.float64]:
+        raise NotImplementedError
+
+    @property
+    def grid_radians_2d(self) -> np.ndarray[tuple[int, int, int], np.float64]:
+        raise NotImplementedError
+
+    @property
+    def pix_indexes_for_sub_slim_index(self) -> np.ndarray[tuple[int, int], np.int64]:
+        raise NotImplementedError
+
+    @property
+    def pix_size_for_sub_slim_index(self) -> np.ndarray[tuple[int], np.int64]:
+        raise NotImplementedError
+
+    @property
+    def pix_weights_for_sub_slim_index(self) -> np.ndarray[tuple[int, int], np.float64]:
+        raise NotImplementedError
+
+    @property
+    def native_index_for_slim_index(self) -> np.ndarray[tuple[int, int], np.int64]:
+        raise NotImplementedError
+
+    @property
+    def neighbors_sizes(self) -> np.ndarray[tuple[int], np.int64]:
+        raise NotImplementedError
+
+    @property
+    def neighbors(self) -> np.ndarray[tuple[int], np.int64]:
+        raise NotImplementedError
+
+    @property
+    def data(self) -> np.ndarray[tuple[int], np.complex128]:
+        raise NotImplementedError
+
+    @property
+    def noise_map(self) -> np.ndarray[tuple[int], np.complex128]:
+        raise NotImplementedError
+
+    # calculated
+    @cached_property
+    def visibilities_real(self) -> np.ndarray[tuple[int], np.float64]:
+        return np.ascontiguousarray(self.data.real)
+
+    @cached_property
+    def noise_map_real(self) -> np.ndarray[tuple[int], np.float64]:
+        """Generate random noise map of size N."""
+        return np.ascontiguousarray(self.noise_map.real)
+
+    @cached_property
+    def data_vector(self) -> np.ndarray[tuple[int], np.float64]:
+        """Generate random data vector of size N."""
+        return original.data_vector_from(self.mapping_matrix, self.dirty_image)
+
+    @cached_property
+    def w_tilde(self) -> np.ndarray[tuple[int, int], np.float64]:
+        """Generate random w_tilde of size N."""
+        return original.w_tilde_curvature_interferometer_from(
+            self.noise_map_real,
+            self.uv_wavelengths,
+            self.grid_radians_slim,
+        )
+
+    @cached_property
+    def curvature_matrix(self) -> np.ndarray[tuple[int, int], np.float64]:
+        return original.curvature_matrix_via_w_tilde_from(self.w_tilde, self.mapping_matrix)
+
+    @cached_property
+    def regularization_matrix(self) -> np.ndarray[tuple[int, int], np.float64]:
+        return original.constant_regularization_matrix_from(
+            self.coefficient,
+            self.neighbors,
+            self.neighbors_sizes,
+        )
+
+    @cached_property
+    def curvature_reg_matrix(self) -> np.ndarray[tuple[int, int], np.float64]:
+        return self.curvature_matrix + self.regularization_matrix
+
+
+@dataclass
+class DataLoaded(Data):
+    """Load data from file."""
+
+    path: Path = Path(__file__).parent / "data.npz"
+
+    def __post_init__(self):
+        self._data = np.load(self.path)
+
+    @property
+    def dirty_image(self):
+        return self._data["dirty_image"]
+
+    @property
+    def data(self):
+        return self._data["data"]
+
+    @property
+    def noise_map(self):
+        return self._data["noise_map"]
+
+    @property
+    def uv_wavelengths(self):
+        return self._data["uv_wavelengths"]
+
+    @property
+    def grid_radians_slim(self):
+        return self._data["grid_radians_slim"]
+
+    @property
+    def grid_radians_2d(self):
+        return self._data["grid_radians_2d"]
+
+    @property
+    def mapping_matrix(self):
+        return self._data["mapping_matrix"]
+
+    @property
+    def neighbors(self):
+        return self._data["neighbors"]
+
+    @property
+    def neighbors_sizes(self):
+        return self._data["neighbors_sizes"]
+
+    @property
+    def pix_indexes_for_sub_slim_index(self):
+        return self._data["pix_indexes_for_sub_slim_index"]
+
+    @property
+    def pix_size_for_sub_slim_index(self):
+        return self._data["pix_size_for_sub_slim_index"]
+
+    @property
+    def pix_weights_for_sub_slim_index(self):
+        return self._data["pix_weights_for_sub_slim_index"]
+
+    @property
+    def native_index_for_slim_index(self):
+        return self._data["native_index_for_slim_index"]
+
+
+@dataclass
+class DataGenerated(Data):
+    """Generate data for testing."""
 
     # random
     @cached_property
@@ -109,13 +275,6 @@ class DataGenerated:
         return rng.random(M)
 
     @cached_property
-    def visibilities_real(self) -> np.ndarray[tuple[int], np.float64]:
-        """Generate random real visibilities of size N."""
-        K = self.K
-        rng = np.random.default_rng(deterministic_seed("visibilities_real", K))
-        return rng.random(K)
-
-    @cached_property
     def uv_wavelengths(self) -> np.ndarray[tuple[int, int], np.float64]:
         """Generate random uv wavelengths of size N."""
         K = self.K
@@ -128,6 +287,11 @@ class DataGenerated:
         M = self.M
         rng = np.random.default_rng(deterministic_seed("grid_radians_slim", M, 2))
         return rng.random((M, 2))
+
+    # def grid_radians_2d(self) -> np.ndarray[tuple[int, int, int], np.float64]:
+    # def pix_indexes_for_sub_slim_index
+    # def pix_size_for_sub_slim_index
+    # def pix_weights_for_sub_slim_index
 
     @cached_property
     def native_index_for_slim_index(self) -> np.ndarray[tuple[int, int], np.int64]:
@@ -176,42 +340,6 @@ class DataGenerated:
         rng = np.random.default_rng(deterministic_seed("noise_map", K))
         return rng.random(2 * K).view(np.complex128)
 
-    # calculated
-    @cached_property
-    def noise_map_real(self) -> np.ndarray[tuple[int], np.float64]:
-        """Generate random noise map of size N."""
-        return np.ascontiguousarray(self.noise_map.real)
-
-    @cached_property
-    def data_vector(self) -> np.ndarray[tuple[int], np.float64]:
-        """Generate random data vector of size N."""
-        return original.data_vector_from(self.mapping_matrix, self.dirty_image)
-
-    @cached_property
-    def w_tilde(self) -> np.ndarray[tuple[int, int], np.float64]:
-        """Generate random w_tilde of size N."""
-        return original.w_tilde_curvature_interferometer_from(
-            self.noise_map_real,
-            self.uv_wavelengths,
-            self.grid_radians_slim,
-        )
-
-    @cached_property
-    def curvature_matrix(self) -> np.ndarray[tuple[int, int], np.float64]:
-        return original.curvature_matrix_via_w_tilde_from(self.w_tilde, self.mapping_matrix)
-
-    @cached_property
-    def regularization_matrix(self) -> np.ndarray[tuple[int, int], np.float64]:
-        return original.constant_regularization_matrix_from(
-            self.coefficient,
-            self.neighbors,
-            self.neighbors_sizes,
-        )
-
-    @cached_property
-    def curvature_reg_matrix(self) -> np.ndarray[tuple[int, int], np.float64]:
-        return self.curvature_matrix + self.regularization_matrix
-
 
 @dataclass
 class Reference:
@@ -233,33 +361,18 @@ class Reference:
         return res
 
 
-@pytest.fixture(scope="module")
-def data_generated():
-    return DataGenerated()
+@pytest.fixture(
+    params=(DataLoaded, DataGenerated),
+    scope="module",
+)
+def data(request):
+    cls = request.param
+    return cls()
 
 
 @pytest.fixture(scope="module")
-def data_dict_numpy(data_generated):
-    return data_generated.dict()
-
-
-@pytest.fixture(scope="module")
-def data_dict_jax(data_dict_numpy):
-    return {k: jnp.array(v) if isinstance(v, np.ndarray) else v for k, v in data_dict_numpy.items()}
-
-
-@pytest.fixture(scope="module")
-def ref_dict(data_generated):
-    return Reference(data_generated).ref
-
-
-@pytest.fixture
-def data_dict(request):
-    mod = request.cls.mod
-    if mod == jax:
-        return request.getfixturevalue("data_dict_jax")
-    else:
-        return request.getfixturevalue("data_dict_numpy")
+def ref(data):
+    return Reference(data)
 
 
 class AutoTestMeta(type):
@@ -271,8 +384,14 @@ class AutoTestMeta(type):
         def create_test(test: str):
             if new_cls.mode == "benchmark":
 
-                @pytest.mark.benchmark(group=test)
-                def test_method(self, data_dict, ref_dict, benchmark):
+                @pytest.mark.benchmark
+                def test_method(self, data, ref, benchmark):
+                    benchmark.group = f"{test}_{type(data).__name__}"
+
+                    data_dict = data.dict()
+                    if new_cls.mod == jax:
+                        data_dict = {k: jnp.array(v) if isinstance(v, np.ndarray) else v for k, v in data_dict.items()}
+                    ref_dict = ref.ref
                     func = getattr(self.mod, test)
                     sig = inspect.signature(func)
                     args = [data_dict[key] for key in sig.parameters]
@@ -283,7 +402,9 @@ class AutoTestMeta(type):
             else:
 
                 @pytest.mark.unittest
-                def test_method(self, data_dict, ref_dict):
+                def test_method(self, data, ref):
+                    data_dict = data.dict()
+                    ref_dict = ref.ref
                     func = getattr(self.mod, test)
                     sig = inspect.signature(func)
                     args = [data_dict[key] for key in sig.parameters]
