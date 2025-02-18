@@ -30,6 +30,24 @@ tests: list[str] = [
 ]
 
 
+tests_all: list[str] = [
+    # "mask_2d_centres_from",
+    "mask_2d_circular_from",
+    "w_tilde_data_interferometer_from",
+    "w_tilde_curvature_interferometer_from",
+    "w_tilde_curvature_preload_interferometer_from",
+    "w_tilde_via_preload_from",
+    "data_vector_from",
+    "curvature_matrix_via_w_tilde_from",
+    "curvature_matrix_via_w_tilde_curvature_preload_interferometer_from",
+    "constant_regularization_matrix_from",
+    "reconstruction_positive_negative_from",
+    "noise_normalization_complex_from",
+    "log_likelihood_function",
+    "log_likelihood_function_via_preload_method",
+]
+
+
 def deterministic_seed(string: str, *numbers: int) -> int:
     """Generate a deterministic seed from the class name."""
     hash_value = hashlib.md5(repr((string, numbers)).encode()).hexdigest()  # Get a hash from class name
@@ -40,11 +58,6 @@ def deterministic_seed(string: str, *numbers: int) -> int:
 class Data:
     """Test data."""
 
-    M: int = 512
-    N: int = 30
-    K: int = 1024
-    P: int = 32
-    S: int = 256
     _pixel_scales: float = 0.2
     _centre: float = 0.0
     radius: float = 3.0
@@ -74,14 +87,18 @@ class Data:
         }
 
     @property
+    def pix_pixels(self) -> int:
+        raise NotImplementedError
+
+    @property
     def shape_native(self) -> tuple[int, int]:
         """Get the shape of the native grid."""
-        return self.M, self.M
+        raise NotImplementedError
 
     @property
     def shape_masked_pixels_2d(self) -> tuple[int, int]:
         """Get the shape of the masked grid."""
-        return self.N, self.N
+        raise NotImplementedError
 
     @property
     def pixel_scales(self) -> tuple[float, float]:
@@ -195,6 +212,32 @@ class DataLoaded(Data):
     def __post_init__(self):
         self._data = np.load(self.path)
 
+    def dict(self) -> dict:
+        res = super().dict()
+        return res | {
+            "pix_pixels": self.pix_pixels,
+            "shape_masked_pixels_2d": self.shape_masked_pixels_2d,
+            "grid_radians_2d": self.grid_radians_2d,
+            "pix_indexes_for_sub_slim_index": self.pix_indexes_for_sub_slim_index,
+            "pix_size_for_sub_slim_index": self.pix_size_for_sub_slim_index,
+            "pix_weights_for_sub_slim_index": self.pix_weights_for_sub_slim_index,
+        }
+
+    @property
+    def pix_pixels(self) -> int:
+        return self.mapping_matrix.shape[1]
+
+    @property
+    def shape_native(self) -> tuple[int, int]:
+        """Get the shape of the native grid."""
+        M = self.mapping_matrix.shape[0]
+        return M, M
+
+    @property
+    def shape_masked_pixels_2d(self) -> tuple[int, int]:
+        """Get the shape of the masked grid."""
+        return 30, 30  # hard-coded for this particular dataset
+
     @property
     def dirty_image(self):
         return self._data["dirty_image"]
@@ -251,6 +294,26 @@ class DataLoaded(Data):
 @dataclass
 class DataGenerated(Data):
     """Generate data for testing."""
+
+    M: int = 512
+    N: int = 30
+    K: int = 1024
+    P: int = 32
+    S: int = 256
+
+    @property
+    def pix_pixels(self) -> int:
+        return self.S
+
+    @property
+    def shape_native(self) -> tuple[int, int]:
+        """Get the shape of the native grid."""
+        return self.M, self.M
+
+    @property
+    def shape_masked_pixels_2d(self) -> tuple[int, int]:
+        """Get the shape of the masked grid."""
+        return self.N, self.N
 
     # random
     @cached_property
@@ -345,7 +408,8 @@ class DataGenerated(Data):
 class Reference:
     """Generate reference values for testing."""
 
-    data: DataGenerated
+    data: Data
+    tests: tuple[str, ...]
     mod = original
 
     @cached_property
@@ -372,7 +436,7 @@ def data(request):
 
 @pytest.fixture(scope="module")
 def ref(data):
-    return Reference(data)
+    return Reference(data, tests)
 
 
 class AutoTestMeta(type):
@@ -446,3 +510,69 @@ class TestBenchNumba(metaclass=AutoTestMeta):
 class TestBenchJax(metaclass=AutoTestMeta):
     mod = jax
     mode = "benchmark"
+
+
+# special case
+
+
+@pytest.fixture(scope="module")
+def data_loaded():
+    return DataLoaded()
+
+
+class TestLogLikelihood:
+
+    ref: float = -13401.986947103405
+
+    @pytest.mark.benchmark(group="test_log_likelihood_data_loaded")
+    def test_original(self, data_loaded, benchmark):
+        data_dict = data_loaded.dict()
+        func = original.log_likelihood_function
+        sig = inspect.signature(func)
+        args = [data_dict[key] for key in sig.parameters]
+
+        def run():
+            return func(*args)
+
+        res = benchmark(run)
+        np.testing.assert_allclose(res, self.ref)
+
+    @pytest.mark.benchmark(group="test_log_likelihood_data_loaded")
+    def test_numba(self, data_loaded, benchmark):
+        data_dict = data_loaded.dict()
+        func = numba.log_likelihood_function
+        sig = inspect.signature(func)
+        args = [data_dict[key] for key in sig.parameters]
+
+        def run():
+            return func(*args)
+
+        res = benchmark(run)
+        np.testing.assert_allclose(res, self.ref)
+
+    @pytest.mark.benchmark(group="test_log_likelihood_data_loaded")
+    def test_jax(self, data_loaded, benchmark):
+        data_dict = data_loaded.dict()
+        data_dict = {k: jnp.array(v) if isinstance(v, np.ndarray) else v for k, v in data_dict.items()}
+        func = jax.log_likelihood_function
+        sig = inspect.signature(func)
+        args = [data_dict[key] for key in sig.parameters]
+
+        def run():
+            return func(*args).block_until_ready()
+
+        res = benchmark(run)
+        np.testing.assert_allclose(res, self.ref)
+
+    @pytest.mark.benchmark(group="test_log_likelihood_data_loaded")
+    def test_via_preload_method_original(self, data_loaded, benchmark):
+        data_dict = data_loaded.dict()
+        func = original.log_likelihood_function_via_preload_method
+        sig = inspect.signature(func)
+        args = [data_dict[key] for key in sig.parameters]
+
+        def run():
+            return func(*args)
+
+        res = benchmark(run)
+        np.testing.assert_allclose(res, self.ref)
