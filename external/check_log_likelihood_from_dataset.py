@@ -28,9 +28,10 @@ def external():
     )
     del real_space_mask, dataset_type, dataset_path
     dirty_image = dataset.w_tilde.dirty_image
-    w_tilde = dataset.w_tilde.w_matrix
     data = dataset.data
     noise_map = dataset.noise_map
+    uv_wavelengths = dataset.uv_wavelengths
+    grid_radians_slim = dataset.grid.in_radians
 
     mass = al.mp.Isothermal(
         centre=(0.0, 0.0),
@@ -63,9 +64,10 @@ def external():
     del mapper
     return (
         dirty_image,
-        w_tilde,
         data,
         noise_map,
+        uv_wavelengths,
+        grid_radians_slim,
         mapping_matrix,
         neighbors,
         neighbors_sizes,
@@ -75,16 +77,17 @@ def external():
 def main() -> float:
     ref = -13401.986947103405
 
-    dirty_image, w_tilde, data, noise_map, mapping_matrix, neighbors, neighbors_sizes = external()
-    for name in ("dirty_image", "w_tilde", "data", "noise_map", "mapping_matrix", "neighbors", "neighbors_sizes"):
+    dirty_image, data, noise_map, uv_wavelengths, grid_radians_slim, mapping_matrix, neighbors, neighbors_sizes = external()
+    for name in ("dirty_image", "data", "noise_map", "uv_wavelengths", "grid_radians_slim", "mapping_matrix", "neighbors", "neighbors_sizes"):
         print("=========", name, "=========")
         var = np.array(locals()[name])
         print(np.info(var))
     log_likelihood = log_likelihood_function(
         dirty_image,
-        w_tilde,
         data,
-        noise_map,
+        np.array(noise_map),
+        np.array(uv_wavelengths),
+        np.array(grid_radians_slim),
         mapping_matrix,
         neighbors,
         neighbors_sizes,
@@ -94,9 +97,10 @@ def main() -> float:
     np.testing.assert_allclose(log_likelihood, ref)
     log_likelihood_numba = log_likelihood_function_numba(
         np.array(dirty_image),
-        w_tilde,
         np.array(data),
         np.array(noise_map),
+        np.array(uv_wavelengths),
+        np.array(grid_radians_slim),
         mapping_matrix,
         neighbors,
         neighbors_sizes,
@@ -106,9 +110,10 @@ def main() -> float:
     np.testing.assert_allclose(log_likelihood_numba, ref)
     log_likelihood_jax = log_likelihood_function_jax(
         np.array(dirty_image),
-        w_tilde,
         np.array(data),
         np.array(noise_map),
+        np.array(uv_wavelengths),
+        np.array(grid_radians_slim),
         mapping_matrix,
         neighbors,
         neighbors_sizes,

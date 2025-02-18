@@ -89,6 +89,12 @@ def gen_noise_map_real(K: int) -> np.ndarray[tuple[int], np.float64]:
 
 
 def gen_uv_wavelengths(K: int) -> np.ndarray[tuple[int, int], np.float64]:
+    """Generate random uv wavelengths of size K."""
+    rng = np.random.default_rng(deterministic_seed("uv_wavelengths", K))
+    return rng.random(K, 2)
+
+
+def gen_uv_wavelengths(K: int) -> np.ndarray[tuple[int, int], np.float64]:
     """Generate random uv wavelengths of size N."""
     rng = np.random.default_rng(deterministic_seed("uv_wavelengths", K, 2))
     return rng.random((K, 2))
@@ -698,26 +704,29 @@ class TestLogLikelihoodFunction:
         """Fixture to set up test data"""
 
         dirty_image = gen_dirty_image(M)
-        w_tilde = gen_w_tilde(M)
         data = gen_data(K)
         noise_map = gen_noise_map(K)
+        uv_wavelengths = gen_uv_wavelengths(K)
+        grid_radians_slim = gen_grid_radians_slim(M)
         mapping_matrix = gen_mapping_matrix(M, S)
         neighbors, neighbors_sizes = gen_neighbors(S, P)
 
         ref = original.log_likelihood_function(
             dirty_image,
-            w_tilde,
             data,
             noise_map,
+            uv_wavelengths,
+            grid_radians_slim,
             mapping_matrix,
             neighbors,
             neighbors_sizes,
         )
         return {
             "dirty_image": dirty_image,
-            "w_tilde": w_tilde,
             "data": data,
             "noise_map": noise_map,
+            "uv_wavelengths": uv_wavelengths,
+            "grid_radians_slim": grid_radians_slim,
             "mapping_matrix": mapping_matrix,
             "neighbors": neighbors,
             "neighbors_sizes": neighbors_sizes,
@@ -728,9 +737,10 @@ class TestLogLikelihoodFunction:
     def test_log_likelihood_function_original(self, setup_data, benchmark):
         """Benchmark the original log_likelihood_function function"""
         dirty_image = setup_data["dirty_image"]
-        w_tilde = setup_data["w_tilde"]
         data = setup_data["data"]
         noise_map = setup_data["noise_map"]
+        uv_wavelengths = setup_data["uv_wavelengths"]
+        grid_radians_slim = setup_data["grid_radians_slim"]
         mapping_matrix = setup_data["mapping_matrix"]
         neighbors = setup_data["neighbors"]
         neighbors_sizes = setup_data["neighbors_sizes"]
@@ -740,9 +750,10 @@ class TestLogLikelihoodFunction:
         def run():
             return original.log_likelihood_function(
                 dirty_image,
-                w_tilde,
                 data,
                 noise_map,
+                uv_wavelengths,
+                grid_radians_slim,
                 mapping_matrix,
                 neighbors,
                 neighbors_sizes,
@@ -755,9 +766,10 @@ class TestLogLikelihoodFunction:
     def test_log_likelihood_function_numba(self, setup_data, benchmark):
         """Benchmark the numba log_likelihood_function function"""
         dirty_image = setup_data["dirty_image"]
-        w_tilde = setup_data["w_tilde"]
         data = setup_data["data"]
         noise_map = setup_data["noise_map"]
+        uv_wavelengths = setup_data["uv_wavelengths"]
+        grid_radians_slim = setup_data["grid_radians_slim"]
         mapping_matrix = setup_data["mapping_matrix"]
         neighbors = setup_data["neighbors"]
         neighbors_sizes = setup_data["neighbors_sizes"]
@@ -767,9 +779,10 @@ class TestLogLikelihoodFunction:
         def run():
             return numba.log_likelihood_function(
                 dirty_image,
-                w_tilde,
                 data,
                 noise_map,
+                uv_wavelengths,
+                grid_radians_slim,
                 mapping_matrix,
                 neighbors,
                 neighbors_sizes,
@@ -782,9 +795,10 @@ class TestLogLikelihoodFunction:
     def test_log_likelihood_function_jax(self, setup_data, benchmark):
         """Benchmark the jax log_likelihood_function function"""
         dirty_image = jnp.array(setup_data["dirty_image"])
-        w_tilde = jnp.array(setup_data["w_tilde"])
         data = jnp.array(setup_data["data"])
         noise_map = jnp.array(setup_data["noise_map"])
+        uv_wavelengths = jnp.array(setup_data["uv_wavelengths"])
+        grid_radians_slim = jnp.array(setup_data["grid_radians_slim"])
         mapping_matrix = jnp.array(setup_data["mapping_matrix"])
         neighbors = jnp.array(setup_data["neighbors"])
         neighbors_sizes = jnp.array(setup_data["neighbors_sizes"])
@@ -794,9 +808,10 @@ class TestLogLikelihoodFunction:
         def run():
             return jax.log_likelihood_function(
                 dirty_image,
-                w_tilde,
                 data,
                 noise_map,
+                uv_wavelengths,
+                grid_radians_slim,
                 mapping_matrix,
                 neighbors,
                 neighbors_sizes,

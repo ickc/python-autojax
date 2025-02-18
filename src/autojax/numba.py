@@ -350,16 +350,17 @@ def noise_normalization_complex_from(
 
 
 @jit(
-    "f8(f8[::1], f8[:, ::1], c16[::1], c16[::1], f8[:, ::1], i8[:, ::1], i8[::1])",
+    "f8(f8[::1], c16[::1], c16[::1], f8[:, ::1], f8[:, ::1], f8[:, ::1], i8[:, ::1], i8[::1])",
     nopython=True,
     nogil=True,
     parallel=True,
 )
 def log_likelihood_function(
     dirty_image: np.ndarray[tuple[int], np.float64],
-    w_tilde: np.ndarray[tuple[int, int], np.float64],
     data: np.ndarray[tuple[int], np.complex128],
     noise_map: np.ndarray[tuple[int], np.complex128],
+    uv_wavelengths: np.ndarray[tuple[int, int], np.float64],
+    grid_radians_slim: np.ndarray[tuple[int, int], np.float64],
     mapping_matrix: np.ndarray[tuple[int, int], np.float64],
     neighbors: np.ndarray[tuple[int, int], np.int64],
     neighbors_sizes: np.ndarray[tuple[int], np.int64],
@@ -377,12 +378,14 @@ def log_likelihood_function(
     ----------
     dirty_image : ndarray, shape (M,), dtype=float64
         The dirty image used to compute the data vector
-    w_tilde : ndarray, shape (M, M), dtype=float64
-        Matrix encoding the NUFFT of every pair of image pixels given the noise map
     data : ndarray, shape (K,), dtype=complex128
         The complex interferometer data being fitted
     noise_map : ndarray, shape (K,), dtype=complex128
         The complex noise map of the data
+    uv_wavelengths : ndarray, shape (K, 2), dtype=float64
+        The wavelengths of the coordinates in the uv-plane for the interferometer dataset
+    grid_radians_slim : ndarray, shape (M, 2), dtype=float64
+        The 1D (y,x) grid of coordinates in radians corresponding to real-space mask
     mapping_matrix : ndarray, shape (M, S), dtype=float64
         Matrix representing mappings between sub-grid pixels and pixelization pixels
     neighbors : ndarray, shape (S, P), dtype=int64
@@ -410,6 +413,12 @@ def log_likelihood_function(
     coefficient = 1.0
 
     noise_normalization = noise_normalization_complex_from(noise_map)
+
+    w_tilde = w_tilde_curvature_interferometer_from(
+        np.ascontiguousarray(noise_map.real),
+        uv_wavelengths,
+        grid_radians_slim,
+    )
 
     # (S, S)
     curvature_matrix = curvature_matrix_via_w_tilde_from(w_tilde, mapping_matrix)
