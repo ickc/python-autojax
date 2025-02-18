@@ -82,12 +82,6 @@ def gen_visibilities_real(K: int) -> np.ndarray[tuple[int], np.float64]:
     return rng.random(K)
 
 
-def gen_noise_map_real(K: int) -> np.ndarray[tuple[int], np.float64]:
-    """Generate random real noise map of size N."""
-    rng = np.random.default_rng(deterministic_seed("noise_map_real", K))
-    return rng.random(K)
-
-
 def gen_uv_wavelengths(K: int) -> np.ndarray[tuple[int, int], np.float64]:
     """Generate random uv wavelengths of size K."""
     rng = np.random.default_rng(deterministic_seed("uv_wavelengths", K))
@@ -233,7 +227,7 @@ class TestWTildeDataInterferometer:
     def setup_data(self):
         """Fixture to set up test data"""
         visibilities_real = gen_visibilities_real(K)
-        noise_map_real = gen_noise_map_real(K)
+        noise_map_real = np.ascontiguousarray(gen_noise_map(K).real)
         uv_wavelengths = gen_uv_wavelengths(K)
         grid_radians_slim = gen_grid_radians_slim(M)
         native_index_for_slim_index = gen_native_index_for_slim_index(M)
@@ -329,7 +323,7 @@ class TestWTildeCurvatureInterferometer:
     def setup_data(self):
         """Fixture to set up test data"""
 
-        noise_map_real = gen_noise_map_real(K)
+        noise_map_real = np.ascontiguousarray(gen_noise_map(K).real)
         uv_wavelengths = gen_uv_wavelengths(K)
         grid_radians_slim = gen_grid_radians_slim(M)
 
