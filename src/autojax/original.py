@@ -229,17 +229,22 @@ def w_tilde_curvature_preload_interferometer_from(
     shape_masked_pixels_2d: tuple[int, int],
     grid_radians_2d: np.ndarray[tuple[int, int, int], np.float64],
 ) -> np.ndarray[tuple[int, int], np.float64]:
-    """
+    """Computes a preload matrix for efficient calculation of the NUFFT w_tilde matrix.
+
     The matrix w_tilde is a matrix of dimensions [unmasked_image_pixels, unmasked_image_pixels] that encodes the
     NUFFT of every pair of image pixels given the noise map. This can be used to efficiently compute the curvature
     matrix via the mapping matrix, in a way that omits having to perform the NUFFT on every individual source pixel.
     This provides a significant speed up for inversions of interferometer datasets with large number of visibilities.
+
     The limitation of this matrix is that the dimensions of [image_pixels, image_pixels] can exceed many 10s of GB's,
-    making it impossible to store in memory and its use in linear algebra calculations extremely. This methods creates
-    a preload matrix that can compute the matrix w_tilde via an efficient preloading scheme which exploits the
+    making it impossible to store in memory and its use in linear algebra calculations extremely expensive. This method
+    creates a preload matrix that can compute the matrix w_tilde via an efficient preloading scheme which exploits the
     symmetries in the NUFFT.
+
     To compute w_tilde, one first defines a real space mask where every False entry is an unmasked pixel which is
     used in the calculation, for example:
+
+    Mask Example:
         | x | x | x | x | x | x | x | x | x | x |
         | x | x | x | x | x | x | x | x | x | x |      This is an imaging.Mask2D, where:
         | x | x | x | x | x | x | x | x | x | x |
@@ -250,8 +255,11 @@ def w_tilde_curvature_preload_interferometer_from(
         | x | x | x | x | x | x | x | x | x | x |
         | x | x | x | x | x | x | x | x | x | x |
         | x | x | x | x | x | x | x | x | x | x |
+
     Here, there are 9 unmasked pixels. Indexing of each unmasked pixel goes from the top-left corner right and
     downwards, therefore:
+
+    Indexing Example:
         | x | x | x | x | x | x | x | x | x | x |
         | x | x | x | x | x | x | x | x | x | x |
         | x | x | x | x | x | x | x | x | x | x |
@@ -262,18 +270,18 @@ def w_tilde_curvature_preload_interferometer_from(
         | x | x | x | x | x | x | x | x | x | x |
         | x | x | x | x | x | x | x | x | x | x |
         | x | x | x | x | x | x | x | x | x | x |
-    In the standard calculation of `w_tilde` it is a matrix of
-    dimensions [unmasked_image_pixels, unmasked_pixel_images], therefore for the example mask above it would be
-    dimensions [9, 9]. One performs a double for loop over `unmasked_image_pixels`, using the (y,x) spatial offset
-    between every possible pair of unmasked image pixels to precompute values that depend on the properties of the NUFFT.
+
+    In the standard calculation of `w_tilde` it is a matrix of dimensions [unmasked_image_pixels, unmasked_pixel_images],
+    therefore for the example mask above it would be dimensions [9, 9]. One performs a double for loop over
+    `unmasked_image_pixels`, using the (y,x) spatial offset between every possible pair of unmasked image pixels to
+    precompute values that depend on the properties of the NUFFT.
+
     This calculation has a lot of redundancy, because it uses the (y,x) *spatial offset* between the image pixels. For
-    example, if two image pixel are next to one another by the same spacing the same value will be computed via the
+    example, if two image pixels are next to one another by the same spacing the same value will be computed via the
     NUFFT. For the example mask above:
 
     - The value precomputed for pixel pair [0,1] is the same as pixel pairs [1,2], [3,4], [4,5], [6,7] and [7,8].
-
     - The value precomputed for pixel pair [0,3] is the same as pixel pairs [1,4], [2,5], [3,6], [4,7] and [5,8].
-
     - The values of pixels paired with themselves are also computed repeatedly for the standard calculation (e.g. 9
       times using the mask above).
 
@@ -281,42 +289,49 @@ def w_tilde_curvature_preload_interferometer_from(
     matrix of dimensions [shape_masked_pixels_y, shape_masked_pixels_x, 2], where `shape_masked_pixels` is the (y,x)
     size of the vertical and horizontal extent of unmasked pixels, e.g. the spatial extent over which the real space
     grid extends.
+
     Each entry in the matrix `w_tilde_preload[:,:,0]` provides the precomputed NUFFT value mapping an image pixel
     to a pixel offset by that much in the y and x directions, for example:
 
     - w_tilde_preload[0,0,0] gives the precomputed values of image pixels that are offset in the y direction by 0 and
       in the x direction by 0 - the values of pixels paired with themselves.
-
     - w_tilde_preload[1,0,0] gives the precomputed values of image pixels that are offset in the y direction by 1 and
       in the x direction by 0 - the values of pixel pairs [0,3], [1,4], [2,5], [3,6], [4,7] and [5,8]
-
     - w_tilde_preload[0,1,0] gives the precomputed values of image pixels that are offset in the y direction by 0 and
       in the x direction by 1 - the values of pixel pairs [0,1], [1,2], [3,4], [4,5], [6,7] and [7,8].
 
     Flipped pairs:
-
-    The above preloaded values pair all image pixel NUFFT values when a pixel is to the right and / or down of the
+    The above preloaded values pair all image pixel NUFFT values when a pixel is to the right and/or down of the
     first image pixel. However, one must also precompute pairs where the paired pixel is to the left of the host
     pixels. These pairings are stored in `w_tilde_preload[:,:,1]`, and the ordering of these pairings is flipped in the
     x direction to make it straight forward to use this matrix when computing w_tilde.
 
     Parameters
     ----------
-    noise_map_real : ndarray, shape (K,), dtype=float64
-        The real noise-map values of the interferometer data
-    uv_wavelengths : ndarray, shape (K, 2), dtype=float64
+    noise_map_real : ndarray
+        The real noise-map values of the interferometer data.
+        Shape: (K,)
+        dtype: float64
+    uv_wavelengths : ndarray
         The wavelengths of the coordinates in the uv-plane for the interferometer dataset that is to be Fourier
         transformed.
-    shape_masked_pixels_2d
+        Shape: (K, 2)
+        dtype: float64
+    shape_masked_pixels_2d : tuple
         The (y,x) shape corresponding to the extent of unmasked pixels that go vertically and horizontally across the
         mask. E.g. (N, N), N = 30
-    grid_radians_2d: ndarray, shape (N_PRIME, N_PRIME, 2), dtype=float64
+    grid_radians_2d : ndarray
         The 2D (y,x) grid of coordinates in radians corresponding to real-space mask within which the image that is
         Fourier transformed is computed. N_PRIME >= N. E.g. N_PRIME = 100
+        Shape: (N_PRIME, N_PRIME, 2)
+        dtype: float64
+
     Returns
     -------
-    ndarray, shape (2N, 2N), dtype=float64
+    ndarray
         A matrix that precomputes the values for fast computation of w_tilde.
+        Shape: (2N, 2N)
+        dtype: float64
     """
 
     y_shape = shape_masked_pixels_2d[0]
