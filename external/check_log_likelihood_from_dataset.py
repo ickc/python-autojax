@@ -1,5 +1,8 @@
 #!/usr/bin/env python
 
+from pathlib import Path
+
+import autolens as al
 import numpy as np
 
 from autojax.jax import log_likelihood_function as log_likelihood_function_jax
@@ -8,10 +11,6 @@ from autojax.original import log_likelihood_function, log_likelihood_function_vi
 
 
 def external():
-    from pathlib import Path
-
-    import autolens as al
-
     real_space_mask = al.Mask2D.circular(
         shape_native=(100, 100),
         pixel_scales=0.2,
@@ -33,9 +32,7 @@ def external():
     uv_wavelengths = dataset.uv_wavelengths
     grid_radians_slim = dataset.grid.in_radians
     shape_masked_pixels_2d = dataset.transformer.grid.mask.shape_native_masked_pixels
-    grid_radians_2d=np.array(
-        dataset.transformer.grid.mask.derive_grid.all_false.in_radians.native
-    )
+    grid_radians_2d = np.array(dataset.transformer.grid.mask.derive_grid.all_false.in_radians.native)
 
     mass = al.mp.Isothermal(
         centre=(0.0, 0.0),
@@ -94,8 +91,40 @@ def external():
 def main() -> float:
     ref = -13401.986947103405
 
-    dirty_image, data, noise_map, uv_wavelengths, grid_radians_slim, shape_masked_pixels_2d, grid_radians_2d, mapping_matrix, neighbors, neighbors_sizes, pix_indexes_for_sub_slim_index, pix_size_for_sub_slim_index, pix_weights_for_sub_slim_index, native_index_for_slim_index, pix_pixels = external()
-    for name in ("dirty_image", "data", "noise_map", "uv_wavelengths", "grid_radians_slim", "shape_masked_pixels_2d", "grid_radians_2d", "mapping_matrix", "neighbors", "neighbors_sizes", "pix_indexes_for_sub_slim_index", "pix_size_for_sub_slim_index", "pix_weights_for_sub_slim_index", "native_index_for_slim_index", "pix_pixels"):
+    (
+        dirty_image,
+        data,
+        noise_map,
+        uv_wavelengths,
+        grid_radians_slim,
+        shape_masked_pixels_2d,
+        grid_radians_2d,
+        mapping_matrix,
+        neighbors,
+        neighbors_sizes,
+        pix_indexes_for_sub_slim_index,
+        pix_size_for_sub_slim_index,
+        pix_weights_for_sub_slim_index,
+        native_index_for_slim_index,
+        pix_pixels,
+    ) = external()
+    for name in (
+        "dirty_image",
+        "data",
+        "noise_map",
+        "uv_wavelengths",
+        "grid_radians_slim",
+        "shape_masked_pixels_2d",
+        "grid_radians_2d",
+        "mapping_matrix",
+        "neighbors",
+        "neighbors_sizes",
+        "pix_indexes_for_sub_slim_index",
+        "pix_size_for_sub_slim_index",
+        "pix_weights_for_sub_slim_index",
+        "native_index_for_slim_index",
+        "pix_pixels",
+    ):
         print("=========", name, "=========")
         var = np.array(locals()[name])
         print(np.info(var))
@@ -137,8 +166,7 @@ def main() -> float:
     )
     print("=========", "log_likelihood_function_via_preload_method", "=========")
     print(log_likelihood_via_preload_method)
-    np.testing.assert_allclose(log_likelihood_via_preload_method,
-                                 ref)
+    np.testing.assert_allclose(log_likelihood_via_preload_method, ref)
 
     log_likelihood_numba = log_likelihood_function_numba(
         np.array(dirty_image),
