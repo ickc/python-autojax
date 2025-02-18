@@ -406,7 +406,7 @@ packages:
 - pypi: .
   name: autojax
   version: 0.1.0
-  sha256: 1b771a0e65a0e6ba3aab790d2e1429ee5cbf89208c0b7f2e875cfa3600984c8b
+  sha256: 97bcbbe5c0bc112d4ec075740a285a24ca7548f4534ff548f29ebbc2e4080387
   requires_dist:
   - bump-my-version ; extra == 'extras'
   - coloredlogs ; extra == 'extras'
