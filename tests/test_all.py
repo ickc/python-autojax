@@ -148,7 +148,7 @@ class Data:
 
     @property
     def mask(self) -> np.ndarray[tuple[int, int], np.bool]:
-        raise original.mask_2d_circular_from(self.shape_native, self.pixel_scales, self.radius, self.centre)
+        return original.mask_2d_circular_from(self.shape_masked_pixels_2d, self.pixel_scales, self.radius, self.centre)
 
     @property
     def grid_radians_2d(self) -> np.ndarray[tuple[int, int, int], np.float64]:
