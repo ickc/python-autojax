@@ -197,6 +197,36 @@ def w_tilde_curvature_interferometer_from(
 
 
 @jax.jit
+def w_tilde_via_preload_from(
+    w_tilde_preload: np.ndarray[tuple[int, int], np.float64],
+    native_index_for_slim_index: np.ndarray[tuple[int, int], np.int64],
+) -> np.ndarray[tuple[int, int], np.float64]:
+    """
+    Use the preloaded w_tilde matrix (see `w_tilde_preload_interferometer_from`) to compute
+    w_tilde (see `w_tilde_interferometer_from`) efficiently.
+
+    Parameters
+    ----------
+    w_tilde_preload : ndarray, shape (2N, 2N), dtype=float64
+        The preloaded values of the NUFFT that enable efficient computation of w_tilde.
+    native_index_for_slim_index : ndarray, shape (M, 2), dtype=int64
+        An array of shape [total_unmasked_pixels*sub_size] that maps every unmasked sub-pixel to its corresponding
+        native 2D pixel using its (y,x) pixel indexes.
+
+    Returns
+    -------
+    ndarray : shape (M, M), dtype=float64
+        A matrix that encodes the NUFFT values between the noise map that enables efficient calculation of the curvature
+        matrix.
+    """
+    y_i = native_index_for_slim_index[:, 0]
+    x_i = native_index_for_slim_index[:, 1]
+    Δy_ij = y_i.reshape(-1, 1) - y_i
+    Δx_ij = x_i.reshape(-1, 1) - x_i
+    return w_tilde_preload[Δy_ij, Δx_ij]
+
+
+@jax.jit
 def data_vector_from(
     mapping_matrix: np.ndarray[tuple[int, int], np.float64],
     dirty_image: np.ndarray[tuple[int], np.float64],

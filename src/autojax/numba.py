@@ -194,6 +194,41 @@ def w_tilde_curvature_interferometer_from(
     return curvature_matrix
 
 
+@jit("f8[:, ::1](f8[:, ::1], i8[:, ::1])", nopython=True, nogil=True, parallel=True)
+def w_tilde_via_preload_from(
+    w_tilde_preload: np.ndarray[tuple[int, int], np.float64],
+    native_index_for_slim_index: np.ndarray[tuple[int, int], np.int64],
+) -> np.ndarray[tuple[int, int], np.float64]:
+    """
+    Use the preloaded w_tilde matrix (see `w_tilde_preload_interferometer_from`) to compute
+    w_tilde (see `w_tilde_interferometer_from`) efficiently.
+
+    Parameters
+    ----------
+    w_tilde_preload : ndarray, shape (2N, 2N), dtype=float64
+        The preloaded values of the NUFFT that enable efficient computation of w_tilde.
+    native_index_for_slim_index : ndarray, shape (M, 2), dtype=int64
+        An array of shape [total_unmasked_pixels*sub_size] that maps every unmasked sub-pixel to its corresponding
+        native 2D pixel using its (y,x) pixel indexes.
+
+    Returns
+    -------
+    ndarray : shape (M, M), dtype=float64
+        A matrix that encodes the NUFFT values between the noise map that enables efficient calculation of the curvature
+        matrix.
+    """
+    M = native_index_for_slim_index.shape[0]
+    w = np.empty((M, M))
+    for i in range(M):
+        y_i, x_i = native_index_for_slim_index[i]
+        for j in range(M):
+            y_j, x_j = native_index_for_slim_index[j]
+            Δy = y_j - y_i
+            Δx = x_j - x_i
+            w[i, j] = w_tilde_preload[Δy, Δx]
+    return w
+
+
 @jit("f8[::1](f8[:, ::1], f8[::1])", nopython=True, nogil=True)
 def data_vector_from(
     mapping_matrix: np.ndarray[tuple[int, int], np.float64],
