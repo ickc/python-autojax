@@ -12,7 +12,7 @@ from jax import numpy as jnp
 
 from autojax import jax, numba, original
 
-tests: list[str] = [
+tests_generated: list[str] = [
     # "mask_2d_centres_from",
     "mask_2d_circular_from",
     "w_tilde_data_interferometer_from",
@@ -27,6 +27,9 @@ tests: list[str] = [
     "noise_normalization_complex_from",
     "log_likelihood_function",
     # "log_likelihood_function_via_preload_method",
+]
+tests_loaded: list[str] = tests_generated + [
+    "w_tilde_via_preload_from",
 ]
 
 
@@ -187,6 +190,15 @@ class Data:
         )
 
     @cached_property
+    def w_tilde_preload(self) -> np.ndarray[tuple[int, int], np.float64]:
+        return original.w_tilde_curvature_preload_interferometer_from(
+            self.noise_map_real,
+            self.uv_wavelengths,
+            self.shape_masked_pixels_2d,
+            self.grid_radians_2d,
+        )
+
+    @cached_property
     def curvature_matrix(self) -> np.ndarray[tuple[int, int], np.float64]:
         return original.curvature_matrix_via_w_tilde_from(self.w_tilde, self.mapping_matrix)
 
@@ -217,6 +229,7 @@ class DataLoaded(Data):
         return res | {
             "pix_pixels": self.pix_pixels,
             "shape_masked_pixels_2d": self.shape_masked_pixels_2d,
+            "w_tilde_preload": self.w_tilde_preload,
             "grid_radians_2d": self.grid_radians_2d,
             "pix_indexes_for_sub_slim_index": self.pix_indexes_for_sub_slim_index,
             "pix_size_for_sub_slim_index": self.pix_size_for_sub_slim_index,
@@ -417,7 +430,7 @@ class Reference:
         data_dict = self.data.dict()
 
         res = {}
-        for test in tests:
+        for test in self.tests:
             func = getattr(self.mod, test)
             sig = inspect.signature(func)
             args = [data_dict[key] for key in sig.parameters]
@@ -429,14 +442,12 @@ class Reference:
     params=(DataLoaded, DataGenerated),
     scope="module",
 )
-def data(request):
-    cls = request.param
-    return cls()
-
-
-@pytest.fixture(scope="module")
-def ref(data):
-    return Reference(data, tests)
+def data_bundle(request):
+    Data = request.param
+    data = Data()
+    tests = tests_generated if Data is DataGenerated else tests_loaded
+    ref = Reference(data, tests)
+    return data, ref
 
 
 class AutoTestMeta(type):
@@ -449,7 +460,11 @@ class AutoTestMeta(type):
             if new_cls.mode == "benchmark":
 
                 @pytest.mark.benchmark
-                def test_method(self, data, ref, benchmark):
+                def test_method(self, data_bundle, benchmark):
+                    data, ref = data_bundle
+                    if test not in ref.tests:
+                        pytest.skip(f"Skip {test} from {type(data).__name__}")
+
                     benchmark.group = f"{test}_{type(data).__name__}"
 
                     data_dict = data.dict()
@@ -466,7 +481,11 @@ class AutoTestMeta(type):
             else:
 
                 @pytest.mark.unittest
-                def test_method(self, data, ref):
+                def test_method(self, data_bundle):
+                    data, ref = data_bundle
+                    if test not in ref.tests:
+                        pytest.skip(f"Skip {test} from {type(data).__name__}")
+
                     data_dict = data.dict()
                     ref_dict = ref.ref
                     func = getattr(self.mod, test)
@@ -479,7 +498,7 @@ class AutoTestMeta(type):
             test_method.__name__ = f"test_{test}_{new_cls.mod.__name__.split(".")[-1]}"
             return test_method
 
-        for test_name in tests:
+        for test_name in tests_all:
             method = create_test(test_name)
             setattr(new_cls, method.__name__, method)
 
