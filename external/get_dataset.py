@@ -26,8 +26,6 @@ def external():
     data = dataset.data
     noise_map = dataset.noise_map
     uv_wavelengths = dataset.uv_wavelengths
-    grid_radians_slim = dataset.grid.in_radians
-    grid_radians_2d = np.array(dataset.transformer.grid.mask.derive_grid.all_false.in_radians.native)
 
     mass = al.mp.Isothermal(
         centre=(0.0, 0.0),
@@ -68,8 +66,6 @@ def external():
         data,
         noise_map,
         uv_wavelengths,
-        grid_radians_slim,
-        grid_radians_2d,
         mapping_matrix,
         neighbors,
         neighbors_sizes,
@@ -86,8 +82,6 @@ def main():
         data,
         noise_map,
         uv_wavelengths,
-        grid_radians_slim,
-        grid_radians_2d,
         mapping_matrix,
         neighbors,
         neighbors_sizes,
@@ -102,8 +96,6 @@ def main():
         data=data,
         noise_map=noise_map,
         uv_wavelengths=uv_wavelengths,
-        grid_radians_slim=grid_radians_slim,
-        grid_radians_2d=grid_radians_2d,
         mapping_matrix=mapping_matrix,
         neighbors=neighbors,
         neighbors_sizes=neighbors_sizes,

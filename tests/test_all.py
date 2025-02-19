@@ -77,6 +77,7 @@ class Data:
             "dirty_image": self.dirty_image,
             "visibilities_real": self.visibilities_real,
             "uv_wavelengths": self.uv_wavelengths,
+            "grid_radians_2d": self.grid_radians_2d,
             "grid_radians_slim": self.grid_radians_slim,
             "native_index_for_slim_index": self.native_index_for_slim_index,
             "w_tilde": self.w_tilde,
@@ -90,18 +91,38 @@ class Data:
         }
 
     @property
-    def pix_pixels(self) -> int:
+    def M(self) -> int:
         raise NotImplementedError
+
+    @property
+    def N(self) -> int:
+        raise NotImplementedError
+
+    @property
+    def K(self) -> int:
+        raise NotImplementedError
+
+    @property
+    def P(self) -> int:
+        raise NotImplementedError
+
+    @property
+    def S(self) -> int:
+        raise NotImplementedError
+
+    @property
+    def pix_pixels(self) -> int:
+        return self.S
 
     @property
     def shape_native(self) -> tuple[int, int]:
         """Get the shape of the native grid."""
-        raise NotImplementedError
+        return self.M, self.M
 
     @property
     def shape_masked_pixels_2d(self) -> tuple[int, int]:
         """Get the shape of the masked grid."""
-        raise NotImplementedError
+        return self.N, self.N
 
     @property
     def pixel_scales(self) -> tuple[float, float]:
@@ -126,12 +147,24 @@ class Data:
         raise NotImplementedError
 
     @property
-    def grid_radians_slim(self) -> np.ndarray[tuple[int, int], np.float64]:
-        raise NotImplementedError
+    def mask(self) -> np.ndarray[tuple[int, int], np.bool]:
+        raise original.mask_2d_circular_from(self.shape_native, self.pixel_scales, self.radius, self.centre)
 
     @property
     def grid_radians_2d(self) -> np.ndarray[tuple[int, int, int], np.float64]:
-        raise NotImplementedError
+        N=self.N
+        arcsec = np.pi / 648000
+        m=0.2 * arcsec  # hard-coded to match the dataset
+        c=9.9 * arcsec  # hard-coded to match the dataset
+        x = np.mgrid[:N, :N]
+        res = np.empty((N, N, 2))
+        res[:, :, 0] = -m * x[0] + c
+        res[:, :, 1] = m * x[1] - c
+        return res
+
+    @property
+    def grid_radians_slim(self) -> np.ndarray[tuple[int, int], np.float64]:
+        return self.grid_radians_2d[~self.mask]
 
     @property
     def pix_indexes_for_sub_slim_index(self) -> np.ndarray[tuple[int, int], np.int64]:
@@ -230,26 +263,29 @@ class DataLoaded(Data):
             "pix_pixels": self.pix_pixels,
             "shape_masked_pixels_2d": self.shape_masked_pixels_2d,
             "w_tilde_preload": self.w_tilde_preload,
-            "grid_radians_2d": self.grid_radians_2d,
             "pix_indexes_for_sub_slim_index": self.pix_indexes_for_sub_slim_index,
             "pix_size_for_sub_slim_index": self.pix_size_for_sub_slim_index,
             "pix_weights_for_sub_slim_index": self.pix_weights_for_sub_slim_index,
         }
 
     @property
-    def pix_pixels(self) -> int:
+    def M(self) -> int:
+        return self.mapping_matrix.shape[0]
+
+    @property
+    def N(self) -> int:
+        return 30  # hard-coded for this particular dataset
+    @property
+    def K(self) -> int:
+        return self.uv_wavelengths.shape[0]
+
+    @property
+    def P(self) -> int:
+        return self.neighbors.shape[1]
+
+    @property
+    def S(self) -> int:
         return self.mapping_matrix.shape[1]
-
-    @property
-    def shape_native(self) -> tuple[int, int]:
-        """Get the shape of the native grid."""
-        M = self.mapping_matrix.shape[0]
-        return M, M
-
-    @property
-    def shape_masked_pixels_2d(self) -> tuple[int, int]:
-        """Get the shape of the masked grid."""
-        return 30, 30  # hard-coded for this particular dataset
 
     @property
     def dirty_image(self):
@@ -270,10 +306,6 @@ class DataLoaded(Data):
     @property
     def grid_radians_slim(self):
         return self._data["grid_radians_slim"]
-
-    @property
-    def grid_radians_2d(self):
-        return self._data["grid_radians_2d"]
 
     @property
     def mapping_matrix(self):
@@ -308,25 +340,31 @@ class DataLoaded(Data):
 class DataGenerated(Data):
     """Generate data for testing."""
 
-    M: int = 512
-    N: int = 30
-    K: int = 1024
-    P: int = 32
-    S: int = 256
+    M_: int = 512
+    N_: int = 30
+    K_: int = 1024
+    P_: int = 32
+    S_: int = 256
 
     @property
-    def pix_pixels(self) -> int:
-        return self.S
+    def M(self) -> int:
+        return self.M_
 
     @property
-    def shape_native(self) -> tuple[int, int]:
-        """Get the shape of the native grid."""
-        return self.M, self.M
+    def N(self) -> int:
+        return self.N_
 
     @property
-    def shape_masked_pixels_2d(self) -> tuple[int, int]:
-        """Get the shape of the masked grid."""
-        return self.N, self.N
+    def K(self) -> int:
+        return self.K_
+
+    @property
+    def P(self) -> int:
+        return self.P_
+
+    @property
+    def S(self) -> int:
+        return self.S_
 
     # random
     @cached_property
@@ -364,7 +402,6 @@ class DataGenerated(Data):
         rng = np.random.default_rng(deterministic_seed("grid_radians_slim", M, 2))
         return rng.random((M, 2))
 
-    # def grid_radians_2d(self) -> np.ndarray[tuple[int, int, int], np.float64]:
     # def pix_indexes_for_sub_slim_index
     # def pix_size_for_sub_slim_index
     # def pix_weights_for_sub_slim_index
