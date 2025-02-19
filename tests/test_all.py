@@ -92,7 +92,7 @@ class Data:
 
     @property
     def M(self) -> int:
-        raise NotImplementedError
+        return self.grid_radians_slim.shape[0]
 
     @property
     def N(self) -> int:
@@ -146,11 +146,11 @@ class Data:
     def uv_wavelengths(self) -> np.ndarray[tuple[int, int], np.float64]:
         raise NotImplementedError
 
-    @property
+    @cached_property
     def mask(self) -> np.ndarray[tuple[int, int], np.bool]:
         return original.mask_2d_circular_from(self.shape_masked_pixels_2d, self.pixel_scales, self.radius, self.centre)
 
-    @property
+    @cached_property
     def grid_radians_2d(self) -> np.ndarray[tuple[int, int, int], np.float64]:
         N = self.N
         arcsec = np.pi / 648000
@@ -162,7 +162,7 @@ class Data:
         res[:, :, 1] = m * x[1] - c
         return res
 
-    @property
+    @cached_property
     def grid_radians_slim(self) -> np.ndarray[tuple[int, int], np.float64]:
         return self.grid_radians_2d[~self.mask]
 
@@ -337,15 +337,10 @@ class DataLoaded(Data):
 class DataGenerated(Data):
     """Generate data for testing."""
 
-    M_: int = 512
     N_: int = 30
     K_: int = 1024
     P_: int = 32
     S_: int = 256
-
-    @property
-    def M(self) -> int:
-        return self.M_
 
     @property
     def N(self) -> int:
