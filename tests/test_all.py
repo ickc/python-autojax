@@ -152,10 +152,10 @@ class Data:
 
     @property
     def grid_radians_2d(self) -> np.ndarray[tuple[int, int, int], np.float64]:
-        N=self.N
+        N = self.N
         arcsec = np.pi / 648000
-        m=0.2 * arcsec  # hard-coded to match the dataset
-        c=9.9 * arcsec  # hard-coded to match the dataset
+        m = 0.2 * arcsec  # hard-coded to match the dataset
+        c = 9.9 * arcsec  # hard-coded to match the dataset
         x = np.mgrid[:N, :N]
         res = np.empty((N, N, 2))
         res[:, :, 0] = -m * x[0] + c
@@ -275,6 +275,7 @@ class DataLoaded(Data):
     @property
     def N(self) -> int:
         return 30  # hard-coded for this particular dataset
+
     @property
     def K(self) -> int:
         return self.uv_wavelengths.shape[0]
@@ -302,10 +303,6 @@ class DataLoaded(Data):
     @property
     def uv_wavelengths(self):
         return self._data["uv_wavelengths"]
-
-    @property
-    def grid_radians_slim(self):
-        return self._data["grid_radians_slim"]
 
     @property
     def mapping_matrix(self):
@@ -394,13 +391,6 @@ class DataGenerated(Data):
         K = self.K
         rng = np.random.default_rng(deterministic_seed("uv_wavelengths", K, 2))
         return rng.random((K, 2))
-
-    @cached_property
-    def grid_radians_slim(self) -> np.ndarray[tuple[int, int], np.float64]:
-        """Generate random slim grid of size N."""
-        M = self.M
-        rng = np.random.default_rng(deterministic_seed("grid_radians_slim", M, 2))
-        return rng.random((M, 2))
 
     # def pix_indexes_for_sub_slim_index
     # def pix_size_for_sub_slim_index
