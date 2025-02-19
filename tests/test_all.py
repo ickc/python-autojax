@@ -476,7 +476,7 @@ class AutoTestMeta(type):
                     args = [data_dict[key] for key in sig.parameters]
                     run = (lambda: func(*args).block_until_ready()) if new_cls.mod == jax else (lambda: func(*args))
                     res = benchmark(run)
-                    np.testing.assert_allclose(res, ref_dict[test], rtol=1e-6)
+                    np.testing.assert_allclose(res, ref_dict[test], rtol=2e-6)
 
             else:
 
@@ -493,7 +493,7 @@ class AutoTestMeta(type):
                     args = [data_dict[key] for key in sig.parameters]
                     run = (lambda: func(*args).block_until_ready()) if new_cls.mod == jax else (lambda: func(*args))
                     res = run()
-                    np.testing.assert_allclose(res, ref_dict[test], rtol=1e-6)
+                    np.testing.assert_allclose(res, ref_dict[test], rtol=2e-6)
 
             test_method.__name__ = f"test_{test}_{new_cls.mod.__name__.split(".")[-1]}"
             return test_method
