@@ -97,7 +97,7 @@ class Data:
     @property
     def N(self) -> int:
         raise NotImplementedError
-    
+
     @property
     def N_PRIME(self) -> int:
         raise NotImplementedError
@@ -162,13 +162,14 @@ class Data:
     def grid_radians_2d(self) -> np.ndarray[tuple[int, int, int], np.float64]:
         N = self.N_PRIME
         arcsec = np.pi / 648000
-        m = self._pixel_scales * arcsec
-        c = 9.9 * arcsec  # hard-coded to match the dataset
-        x = np.mgrid[:N, :N]
-        res = np.empty((N, N, 2))
-        res[:, :, 0] = -m * x[0] + c
-        res[:, :, 1] = m * x[1] - c
-        return res
+        d = self._pixel_scales * arcsec
+        g_000 = 9.9 * arcsec  # hard-coded to match the dataset
+        g_001 = -g_000
+        I, J = np.mgrid[:N, :N]
+        g = np.empty((N, N, 2))
+        g[:, :, 0] = -d * I + g_000
+        g[:, :, 1] = d * J + g_001
+        return g
 
     @cached_property
     def grid_radians_slim(self) -> np.ndarray[tuple[int, int], np.float64]:
@@ -276,7 +277,7 @@ class DataLoaded(Data):
     @property
     def N(self) -> int:
         return 30  # hard-coded for this particular dataset
-    
+
     @property
     def N_PRIME(self) -> int:
         return 100  # hard-coded for this particular dataset
@@ -347,7 +348,7 @@ class DataGenerated(Data):
     @property
     def N(self) -> int:
         return self.N_
-    
+
     @property
     def N_PRIME(self) -> int:
         return self.N_PRIME_
@@ -399,7 +400,6 @@ class DataGenerated(Data):
     # def pix_indexes_for_sub_slim_index
     # def pix_size_for_sub_slim_index
     # def pix_weights_for_sub_slim_index
-
 
     @cached_property
     def neighbors_sizes(self) -> np.ndarray[tuple[int], np.int64]:
