@@ -97,6 +97,10 @@ class Data:
     @property
     def N(self) -> int:
         raise NotImplementedError
+    
+    @property
+    def N_PRIME(self) -> int:
+        raise NotImplementedError
 
     @property
     def K(self) -> int:
@@ -148,11 +152,11 @@ class Data:
 
     @cached_property
     def mask(self) -> np.ndarray[tuple[int, int], np.bool]:
-        return original.mask_2d_circular_from(self.shape_masked_pixels_2d, self.pixel_scales, self.radius, self.centre)
+        return original.mask_2d_circular_from((self.N_PRIME, self.N_PRIME), self.pixel_scales, self.radius, self.centre)
 
     @cached_property
     def grid_radians_2d(self) -> np.ndarray[tuple[int, int, int], np.float64]:
-        N = self.N
+        N = self.N_PRIME
         arcsec = np.pi / 648000
         m = 0.2 * arcsec  # hard-coded to match the dataset
         c = 9.9 * arcsec  # hard-coded to match the dataset
@@ -205,17 +209,14 @@ class Data:
 
     @cached_property
     def noise_map_real(self) -> np.ndarray[tuple[int], np.float64]:
-        """Generate random noise map of size N."""
         return np.ascontiguousarray(self.noise_map.real)
 
     @cached_property
     def data_vector(self) -> np.ndarray[tuple[int], np.float64]:
-        """Generate random data vector of size N."""
         return original.data_vector_from(self.mapping_matrix, self.dirty_image)
 
     @cached_property
     def w_tilde(self) -> np.ndarray[tuple[int, int], np.float64]:
-        """Generate random w_tilde of size N."""
         return original.w_tilde_curvature_interferometer_from(
             self.noise_map_real,
             self.uv_wavelengths,
@@ -275,6 +276,10 @@ class DataLoaded(Data):
     @property
     def N(self) -> int:
         return 30  # hard-coded for this particular dataset
+    
+    @property
+    def N_PRIME(self) -> int:
+        return 100  # hard-coded for this particular dataset
 
     @property
     def K(self) -> int:
@@ -338,6 +343,7 @@ class DataGenerated(Data):
     """Generate data for testing."""
 
     N_: int = 30
+    N_PRIME_: int = 100
     K_: int = 1024
     P_: int = 32
     S_: int = 256
@@ -345,6 +351,10 @@ class DataGenerated(Data):
     @property
     def N(self) -> int:
         return self.N_
+    
+    @property
+    def N_PRIME(self) -> int:
+        return self.N_PRIME_
 
     @property
     def K(self) -> int:
@@ -361,7 +371,7 @@ class DataGenerated(Data):
     # random
     @cached_property
     def mapping_matrix(self) -> np.ndarray[tuple[int, int], np.float64]:
-        """Generate a random mapping matrix of size N.
+        """Generate a random mapping matrix.
 
         The actual mapping matrix is quite sparse and have columns sum to 1.
         We aren't producing the sparse-ness here.
@@ -375,14 +385,14 @@ class DataGenerated(Data):
 
     @cached_property
     def dirty_image(self) -> np.ndarray[tuple[int], np.float64]:
-        """Generate a random dirty image of size N."""
+        """Generate a random dirty image."""
         M = self.M
         rng = np.random.default_rng(deterministic_seed("dirty_image", M))
         return rng.random(M)
 
     @cached_property
     def uv_wavelengths(self) -> np.ndarray[tuple[int, int], np.float64]:
-        """Generate random uv wavelengths of size N."""
+        """Generate random uv wavelengths."""
         K = self.K
         rng = np.random.default_rng(deterministic_seed("uv_wavelengths", K, 2))
         return rng.random((K, 2))
@@ -393,14 +403,14 @@ class DataGenerated(Data):
 
     @cached_property
     def native_index_for_slim_index(self) -> np.ndarray[tuple[int, int], np.int64]:
-        """Generate random native index for slim index of size N."""
+        """Generate random native index for slim index."""
         M = self.M
         rng = np.random.default_rng(deterministic_seed("native_index_for_slim_index", M, 2))
         return rng.integers(0, M, size=(M, 2))
 
     @cached_property
     def neighbors_sizes(self) -> np.ndarray[tuple[int], np.int64]:
-        """Generate random neighbors_sizes of size N."""
+        """Generate random neighbors_sizes."""
         S = self.S
         P = self.P
         rng = np.random.default_rng(deterministic_seed("neighbors", S, P))
@@ -408,7 +418,7 @@ class DataGenerated(Data):
 
     @cached_property
     def neighbors(self) -> np.ndarray[tuple[int], np.int64]:
-        """Generate random neighbors of size N."""
+        """Generate random neighbors."""
         S = self.S
         P = self.P
         neighbors_sizes = self.neighbors_sizes
@@ -426,14 +436,14 @@ class DataGenerated(Data):
 
     @cached_property
     def data(self) -> np.ndarray[tuple[int], np.complex128]:
-        """Generate random data map of size N."""
+        """Generate random data map."""
         K = self.K
         rng = np.random.default_rng(deterministic_seed("data", K))
         return rng.random(2 * K).view(np.complex128)
 
     @cached_property
     def noise_map(self) -> np.ndarray[tuple[int], np.complex128]:
-        """Generate random noise map of size N."""
+        """Generate random noise map."""
         K = self.K
         rng = np.random.default_rng(deterministic_seed("noise_map", K))
         return rng.random(2 * K).view(np.complex128)
