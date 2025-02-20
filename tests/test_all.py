@@ -156,13 +156,7 @@ class Data:
 
     @cached_property
     def native_index_for_slim_index(self) -> np.ndarray[tuple[int, int], np.int64]:
-        mask = self.mask
-        res = []
-        for i in range(mask.shape[0]):
-            for j in range(mask.shape[1]):
-                if not mask[i, j]:
-                    res.append((i, j))
-        return np.array(res)
+        return np.ascontiguousarray(np.argwhere(~self.mask))
 
     @cached_property
     def grid_radians_2d(self) -> np.ndarray[tuple[int, int, int], np.float64]:
