@@ -158,7 +158,7 @@ class Data:
     def grid_radians_2d(self) -> np.ndarray[tuple[int, int, int], np.float64]:
         N = self.N_PRIME
         arcsec = np.pi / 648000
-        m = 0.2 * arcsec  # hard-coded to match the dataset
+        m = self._pixel_scales * arcsec
         c = 9.9 * arcsec  # hard-coded to match the dataset
         x = np.mgrid[:N, :N]
         res = np.empty((N, N, 2))
@@ -371,15 +371,18 @@ class DataGenerated(Data):
     # random
     @cached_property
     def mapping_matrix(self) -> np.ndarray[tuple[int, int], np.float64]:
-        """Generate a random mapping matrix.
-
-        The actual mapping matrix is quite sparse and have columns sum to 1.
-        We aren't producing the sparse-ness here.
-        """
+        """Generate a mapping matrix."""
         M = self.M
         S = self.S
-        rng = np.random.default_rng(deterministic_seed("mapping_matrix", M, S))
-        mapping_matrix = rng.random((M, S))
+        mapping_matrix = np.zeros((M, S))
+        # make up some sparse mapping matrix, non-zero values are close to the scaled diagonal
+        R = 0.01
+        for i in range(M):
+            for j in range(S):
+                r = np.abs((i + 1) / M - (j + 1) / S)
+                if r < R:
+                    mapping_matrix[i, j] = R - r
+        # normalize
         mapping_matrix /= mapping_matrix.sum(axis=1).reshape(-1, 1)
         return mapping_matrix
 
