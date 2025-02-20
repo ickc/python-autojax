@@ -151,12 +151,12 @@ class Data:
         raise NotImplementedError
 
     @cached_property
-    def mask(self) -> np.ndarray[tuple[int, int], np.bool]:
+    def real_space_mask(self) -> np.ndarray[tuple[int, int], np.bool]:
         return original.mask_2d_circular_from((self.N_PRIME, self.N_PRIME), self.pixel_scales, self.radius, self.centre)
 
     @cached_property
     def native_index_for_slim_index(self) -> np.ndarray[tuple[int, int], np.int64]:
-        return np.ascontiguousarray(np.argwhere(~self.mask))
+        return np.ascontiguousarray(np.argwhere(~self.real_space_mask))
 
     @cached_property
     def grid_radians_2d(self) -> np.ndarray[tuple[int, int, int], np.float64]:
@@ -172,7 +172,7 @@ class Data:
 
     @cached_property
     def grid_radians_slim(self) -> np.ndarray[tuple[int, int], np.float64]:
-        return self.grid_radians_2d[~self.mask]
+        return self.grid_radians_2d[~self.real_space_mask]
 
     @property
     def pix_indexes_for_sub_slim_index(self) -> np.ndarray[tuple[int, int], np.int64]:
