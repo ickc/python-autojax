@@ -18,7 +18,7 @@ tests_generated: list[str] = [
     "w_tilde_data_interferometer_from",
     "w_tilde_curvature_interferometer_from",
     # "w_tilde_curvature_preload_interferometer_from",
-    # "w_tilde_via_preload_from",
+    "w_tilde_via_preload_from",
     "data_vector_from",
     "curvature_matrix_via_w_tilde_from",
     # "curvature_matrix_via_w_tilde_curvature_preload_interferometer_from",
@@ -71,6 +71,7 @@ class Data:
             "radius": self.radius,
             "coefficient": self.coefficient,
             "shape_native": self.shape_native,
+            "shape_masked_pixels_2d": self.shape_masked_pixels_2d,
             "pixel_scales": self.pixel_scales,
             "centre": self.centre,
             "mapping_matrix": self.mapping_matrix,
@@ -81,6 +82,8 @@ class Data:
             "grid_radians_slim": self.grid_radians_slim,
             "native_index_for_slim_index": self.native_index_for_slim_index,
             "w_tilde": self.w_tilde,
+            "w_tilde_preload": self.w_tilde_preload,
+            "curvature_preload": self.w_tilde_preload,
             "neighbors_sizes": self.neighbors_sizes,
             "neighbors": self.neighbors,
             "data_vector": self.data_vector,
@@ -264,7 +267,6 @@ class DataLoaded(Data):
         return res | {
             "pix_pixels": self.pix_pixels,
             "shape_masked_pixels_2d": self.shape_masked_pixels_2d,
-            "w_tilde_preload": self.w_tilde_preload,
             "pix_indexes_for_sub_slim_index": self.pix_indexes_for_sub_slim_index,
             "pix_size_for_sub_slim_index": self.pix_size_for_sub_slim_index,
             "pix_weights_for_sub_slim_index": self.pix_weights_for_sub_slim_index,
@@ -620,3 +622,92 @@ class TestLogLikelihood:
 
         res = benchmark(run)
         np.testing.assert_allclose(res, self.ref)
+
+
+class TestWTilde:
+    """Compute w_tilde via various methods.
+
+    This adds on top of existing benchmarks to compare the performance of the preload method.
+
+    The test names are a bit strange, but is designed to be filtered like this:
+
+        pytest -m benchmark -k w_tilde_curvature_interferometer_from
+    """
+
+    @pytest.mark.benchmark
+    def test_w_tilde_curvature_interferometer_from_preload_original(self, data_bundle, benchmark):
+        data, ref = data_bundle
+        data_dict = data.dict()
+
+        test = "w_tilde_curvature_interferometer_from"
+        benchmark.group = f"{test}_{type(data).__name__}"
+
+        noise_map_real = data_dict["noise_map_real"]
+        uv_wavelengths = data_dict["uv_wavelengths"]
+        shape_masked_pixels_2d = data_dict["shape_masked_pixels_2d"]
+        grid_radians_2d = data_dict["grid_radians_2d"]
+        native_index_for_slim_index = data_dict["native_index_for_slim_index"]
+
+        def run():
+            w_preload = original.w_tilde_curvature_preload_interferometer_from(
+                noise_map_real,
+                uv_wavelengths,
+                shape_masked_pixels_2d,
+                grid_radians_2d,
+            )
+            return original.w_tilde_via_preload_from(w_preload, native_index_for_slim_index)
+
+        res = benchmark(run)
+        np.testing.assert_allclose(res, ref.ref["w_tilde_curvature_interferometer_from"])
+
+    @pytest.mark.benchmark
+    def test_w_tilde_curvature_interferometer_from_compact_numba(self, data_bundle, benchmark):
+        data, ref = data_bundle
+        data_dict = data.dict()
+
+        test = "w_tilde_curvature_interferometer_from"
+        benchmark.group = f"{test}_{type(data).__name__}"
+
+        noise_map_real = data_dict["noise_map_real"]
+        uv_wavelengths = data_dict["uv_wavelengths"]
+        grid_radians_2d = data_dict["grid_radians_2d"]
+        native_index_for_slim_index = data_dict["native_index_for_slim_index"]
+        pixel_scale = data._pixel_scales
+
+        def run():
+            w_compact = numba.w_tilde_curvature_compact_interferometer_from(
+                noise_map_real,
+                uv_wavelengths,
+                pixel_scale,
+                grid_radians_2d,
+            )
+            return numba.w_tilde_via_compact_from(w_compact, native_index_for_slim_index)
+
+        res = benchmark(run)
+        np.testing.assert_allclose(res, ref.ref["w_tilde_curvature_interferometer_from"])
+
+    @pytest.mark.benchmark
+    def test_w_tilde_curvature_interferometer_from_compact_jax(self, data_bundle, benchmark):
+        data, ref = data_bundle
+        data_dict = data.dict()
+
+        test = "w_tilde_curvature_interferometer_from"
+        benchmark.group = f"{test}_{type(data).__name__}"
+
+        noise_map_real = jnp.array(data_dict["noise_map_real"])
+        uv_wavelengths = jnp.array(data_dict["uv_wavelengths"])
+        grid_radians_2d = jnp.array(data_dict["grid_radians_2d"])
+        native_index_for_slim_index = jnp.array(data_dict["native_index_for_slim_index"])
+        pixel_scale = data._pixel_scales
+
+        def run():
+            w_compact = jax.w_tilde_curvature_compact_interferometer_from(
+                noise_map_real,
+                uv_wavelengths,
+                pixel_scale,
+                grid_radians_2d,
+            )
+            return jax.w_tilde_via_compact_from(w_compact, native_index_for_slim_index).block_until_ready()
+
+        res = benchmark(run)
+        np.testing.assert_allclose(res, ref.ref["w_tilde_curvature_interferometer_from"])

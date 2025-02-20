@@ -197,6 +197,39 @@ def w_tilde_curvature_interferometer_from(
 
 
 @jax.jit
+def w_tilde_curvature_compact_interferometer_from(
+    noise_map_real: np.ndarray[tuple[int], np.float64],
+    uv_wavelengths: np.ndarray[tuple[int, int], np.float64],
+    pixel_scale: float,
+    # only shape is used
+    grid_radians_2d: np.ndarray[tuple[int, int, int], np.float64],
+) -> np.ndarray[tuple[int, int], np.float64]:
+    N_PRIME_MINUS1 = grid_radians_2d.shape[0] - 1
+    N_W = 2 * N_PRIME_MINUS1 + 1
+    TWOPI_D = (jnp.pi * jnp.pi * pixel_scale) / 324000.0
+
+    temp = TWOPI_D * (jnp.arange(N_W) - N_PRIME_MINUS1)
+    δ_mn0 = temp.reshape(N_W, 1, 1)
+    δ_mn1 = temp.reshape(1, N_W, 1)
+
+    # (N_W, N_W, K) with O(4MK) elements
+    C = jnp.cos(δ_mn1 * uv_wavelengths[:, 0] - δ_mn0 * uv_wavelengths[:, 1])
+    return C @ jnp.square(jnp.reciprocal(noise_map_real))
+
+
+@jax.jit
+def w_tilde_via_compact_from(
+    w_compact: np.ndarray[tuple[int, int], np.float64],
+    native_index_for_slim_index: np.ndarray[tuple[int, int], np.int64],
+) -> np.ndarray[tuple[int, int], np.float64]:
+    N_PRIME_MINUS1 = w_compact.shape[0] // 2
+    p_ij = (
+        native_index_for_slim_index.reshape(-1, 1, 2) - native_index_for_slim_index.reshape(1, -1, 2)
+    ) + N_PRIME_MINUS1
+    return w_compact[p_ij[:, :, 0], p_ij[:, :, 1]]
+
+
+@jax.jit
 def w_tilde_via_preload_from(
     w_tilde_preload: np.ndarray[tuple[int, int], np.float64],
     native_index_for_slim_index: np.ndarray[tuple[int, int], np.int64],
