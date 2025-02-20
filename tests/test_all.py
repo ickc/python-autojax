@@ -155,6 +155,16 @@ class Data:
         return original.mask_2d_circular_from((self.N_PRIME, self.N_PRIME), self.pixel_scales, self.radius, self.centre)
 
     @cached_property
+    def native_index_for_slim_index(self) -> np.ndarray[tuple[int, int], np.int64]:
+        mask = self.mask
+        res = []
+        for i in range(mask.shape[0]):
+            for j in range(mask.shape[1]):
+                if not mask[i, j]:
+                    res.append((i, j))
+        return np.array(res)
+
+    @cached_property
     def grid_radians_2d(self) -> np.ndarray[tuple[int, int, int], np.float64]:
         N = self.N_PRIME
         arcsec = np.pi / 648000
@@ -180,10 +190,6 @@ class Data:
 
     @property
     def pix_weights_for_sub_slim_index(self) -> np.ndarray[tuple[int, int], np.float64]:
-        raise NotImplementedError
-
-    @property
-    def native_index_for_slim_index(self) -> np.ndarray[tuple[int, int], np.int64]:
         raise NotImplementedError
 
     @property
@@ -333,10 +339,6 @@ class DataLoaded(Data):
     def pix_weights_for_sub_slim_index(self):
         return self._data["pix_weights_for_sub_slim_index"]
 
-    @property
-    def native_index_for_slim_index(self):
-        return self._data["native_index_for_slim_index"]
-
 
 @dataclass
 class DataGenerated(Data):
@@ -404,12 +406,6 @@ class DataGenerated(Data):
     # def pix_size_for_sub_slim_index
     # def pix_weights_for_sub_slim_index
 
-    @cached_property
-    def native_index_for_slim_index(self) -> np.ndarray[tuple[int, int], np.int64]:
-        """Generate random native index for slim index."""
-        M = self.M
-        rng = np.random.default_rng(deterministic_seed("native_index_for_slim_index", M, 2))
-        return rng.integers(0, M, size=(M, 2))
 
     @cached_property
     def neighbors_sizes(self) -> np.ndarray[tuple[int], np.int64]:

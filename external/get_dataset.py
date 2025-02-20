@@ -59,7 +59,6 @@ def external():
     pix_indexes_for_sub_slim_index = mapper.pix_indexes_for_sub_slim_index
     pix_size_for_sub_slim_index = mapper.pix_sizes_for_sub_slim_index
     pix_weights_for_sub_slim_index = mapper.pix_weights_for_sub_slim_index
-    native_index_for_slim_index = dataset.transformer.real_space_mask.derive_indexes.native_for_slim
     del dataset, mapper
     return (
         dirty_image,
@@ -72,7 +71,6 @@ def external():
         pix_indexes_for_sub_slim_index,
         pix_size_for_sub_slim_index,
         pix_weights_for_sub_slim_index,
-        native_index_for_slim_index,
     )
 
 
@@ -88,7 +86,6 @@ def main():
         pix_indexes_for_sub_slim_index,
         pix_size_for_sub_slim_index,
         pix_weights_for_sub_slim_index,
-        native_index_for_slim_index,
     ) = external()
     np.savez(
         Path(__file__).parent / ".." / "tests" / "data.npz",
@@ -102,7 +99,6 @@ def main():
         pix_indexes_for_sub_slim_index=pix_indexes_for_sub_slim_index,
         pix_size_for_sub_slim_index=pix_size_for_sub_slim_index,
         pix_weights_for_sub_slim_index=pix_weights_for_sub_slim_index,
-        native_index_for_slim_index=native_index_for_slim_index,
     )
 
 
