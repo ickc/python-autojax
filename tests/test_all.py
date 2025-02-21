@@ -9,6 +9,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 from jax import numpy as jnp
+from jax.experimental import sparse
 
 from autojax import jax, numba, original
 
@@ -711,3 +712,193 @@ class TestWTilde:
 
         res = benchmark(run)
         np.testing.assert_allclose(res, ref.ref["w_tilde_curvature_interferometer_from"])
+
+
+class TestCurvatureMatrix:
+    """Compute curvature matrix via various methods."""
+
+    @pytest.mark.benchmark
+    def test_curvature_matrix_original(self, data_bundle, benchmark):
+        data, ref = data_bundle
+        data_dict = data.dict()
+
+        test = "curvature_matrix"
+        benchmark.group = f"{test}_{type(data).__name__}"
+
+        noise_map_real = data_dict["noise_map_real"]
+        uv_wavelengths = data_dict["uv_wavelengths"]
+        grid_radians_slim = data_dict["grid_radians_slim"]
+        mapping_matrix = data_dict["mapping_matrix"]
+
+        def run():
+            w_tilde = original.w_tilde_curvature_interferometer_from(
+                noise_map_real,
+                uv_wavelengths,
+                grid_radians_slim,
+            )
+            curvature_matrix = original.curvature_matrix_via_w_tilde_from(
+                w_tilde,
+                mapping_matrix,
+            )
+            return curvature_matrix
+
+        res = benchmark(run)
+        np.testing.assert_allclose(res, ref.ref["curvature_matrix_via_w_tilde_from"])
+
+    @pytest.mark.benchmark
+    def test_curvature_matrix_numba(self, data_bundle, benchmark):
+        data, ref = data_bundle
+        data_dict = data.dict()
+
+        test = "curvature_matrix"
+        benchmark.group = f"{test}_{type(data).__name__}"
+
+        noise_map_real = data_dict["noise_map_real"]
+        uv_wavelengths = data_dict["uv_wavelengths"]
+        grid_radians_slim = data_dict["grid_radians_slim"]
+        mapping_matrix = data_dict["mapping_matrix"]
+
+        def run():
+            w_tilde = numba.w_tilde_curvature_interferometer_from(
+                noise_map_real,
+                uv_wavelengths,
+                grid_radians_slim,
+            )
+            curvature_matrix = numba.curvature_matrix_via_w_tilde_from(
+                w_tilde,
+                mapping_matrix,
+            )
+            return curvature_matrix
+
+        res = benchmark(run)
+        np.testing.assert_allclose(res, ref.ref["curvature_matrix_via_w_tilde_from"])
+
+    @pytest.mark.benchmark
+    def test_curvature_matrix_jax(self, data_bundle, benchmark):
+        data, ref = data_bundle
+        data_dict = data.dict()
+
+        test = "curvature_matrix"
+        benchmark.group = f"{test}_{type(data).__name__}"
+
+        noise_map_real = jnp.array(data_dict["noise_map_real"])
+        uv_wavelengths = jnp.array(data_dict["uv_wavelengths"])
+        grid_radians_slim = jnp.array(data_dict["grid_radians_slim"])
+        mapping_matrix = jnp.array(data_dict["mapping_matrix"])
+
+        def run():
+            w_tilde = jax.w_tilde_curvature_interferometer_from(
+                noise_map_real,
+                uv_wavelengths,
+                grid_radians_slim,
+            )
+            curvature_matrix = jax.curvature_matrix_via_w_tilde_from(
+                w_tilde,
+                mapping_matrix,
+            )
+            return curvature_matrix.block_until_ready()
+
+        res = benchmark(run)
+        np.testing.assert_allclose(res, ref.ref["curvature_matrix_via_w_tilde_from"])
+
+    @pytest.mark.benchmark
+    def test_curvature_matrix_preload_original(self, data_bundle, benchmark):
+        data, ref = data_bundle
+        data_dict = data.dict()
+
+        test = "curvature_matrix"
+        benchmark.group = f"{test}_{type(data).__name__}"
+
+        noise_map_real = data_dict["noise_map_real"]
+        uv_wavelengths = data_dict["uv_wavelengths"]
+        shape_masked_pixels_2d = data_dict["shape_masked_pixels_2d"]
+        grid_radians_2d = data_dict["grid_radians_2d"]
+        pix_indexes_for_sub_slim_index = data_dict["pix_indexes_for_sub_slim_index"]
+        pix_size_for_sub_slim_index = data_dict["pix_size_for_sub_slim_index"]
+        pix_weights_for_sub_slim_index = data_dict["pix_weights_for_sub_slim_index"]
+        native_index_for_slim_index = data_dict["native_index_for_slim_index"]
+        pix_pixels = data_dict["pix_pixels"]
+
+        def run():
+            curvature_preload = original.w_tilde_curvature_preload_interferometer_from(
+                noise_map_real,
+                uv_wavelengths,
+                shape_masked_pixels_2d,
+                grid_radians_2d,
+            )
+            curvature_matrix = original.curvature_matrix_via_w_tilde_curvature_preload_interferometer_from(
+                curvature_preload,
+                pix_indexes_for_sub_slim_index,
+                pix_size_for_sub_slim_index,
+                pix_weights_for_sub_slim_index,
+                native_index_for_slim_index,
+                pix_pixels,
+            )
+            return curvature_matrix
+
+        res = benchmark(run)
+        np.testing.assert_allclose(res, ref.ref["curvature_matrix_via_w_tilde_from"])
+
+    @pytest.mark.benchmark
+    def test_curvature_matrix_compact_jax(self, data_bundle, benchmark):
+        data, ref = data_bundle
+        data_dict = data.dict()
+
+        test = "curvature_matrix"
+        benchmark.group = f"{test}_{type(data).__name__}"
+
+        noise_map_real = jnp.array(data_dict["noise_map_real"])
+        uv_wavelengths = jnp.array(data_dict["uv_wavelengths"])
+        grid_radians_2d = jnp.array(data_dict["grid_radians_2d"])
+        native_index_for_slim_index = jnp.array(data_dict["native_index_for_slim_index"])
+        mapping_matrix = jnp.array(data_dict["mapping_matrix"])
+        pixel_scale = data._pixel_scales
+
+        def run():
+            w_compact = jax.w_tilde_curvature_compact_interferometer_from(
+                noise_map_real,
+                uv_wavelengths,
+                pixel_scale,
+                grid_radians_2d,
+            )
+            curvature_matrix = jax.curvature_matrix_via_w_compact_from(
+                w_compact,
+                native_index_for_slim_index,
+                mapping_matrix,
+            )
+            return curvature_matrix.block_until_ready()
+
+        res = benchmark(run)
+        np.testing.assert_allclose(res, ref.ref["curvature_matrix_via_w_tilde_from"])
+
+    @pytest.mark.benchmark
+    def test_curvature_matrix_compact_jax_BCOO(self, data_bundle, benchmark):
+        data, ref = data_bundle
+        data_dict = data.dict()
+
+        test = "curvature_matrix"
+        benchmark.group = f"{test}_{type(data).__name__}"
+
+        noise_map_real = jnp.array(data_dict["noise_map_real"])
+        uv_wavelengths = jnp.array(data_dict["uv_wavelengths"])
+        grid_radians_2d = jnp.array(data_dict["grid_radians_2d"])
+        native_index_for_slim_index = jnp.array(data_dict["native_index_for_slim_index"])
+        mapping_matrix = sparse.BCOO.fromdense(data_dict["mapping_matrix"])
+        pixel_scale = data._pixel_scales
+
+        def run():
+            w_compact = jax.w_tilde_curvature_compact_interferometer_from(
+                noise_map_real,
+                uv_wavelengths,
+                pixel_scale,
+                grid_radians_2d,
+            )
+            curvature_matrix = jax.curvature_matrix_via_w_compact_from(
+                w_compact,
+                native_index_for_slim_index,
+                mapping_matrix,
+            )
+            return curvature_matrix.block_until_ready()
+
+        res = benchmark(run)
+        np.testing.assert_allclose(res, ref.ref["curvature_matrix_via_w_tilde_from"])
