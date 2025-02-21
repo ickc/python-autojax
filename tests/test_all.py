@@ -7,6 +7,7 @@ from functools import cached_property
 from pathlib import Path
 
 import numpy as np
+from numba import jit
 import pytest
 from jax import numpy as jnp
 from jax.experimental import sparse
@@ -363,12 +364,10 @@ class DataGenerated(Data):
     def S(self) -> int:
         return self.S_
 
-    # random
-    @cached_property
-    def mapping_matrix(self) -> np.ndarray[tuple[int, int], np.float64]:
+    @staticmethod
+    @jit("float64[:, :](int64, int64)", nopython=True, nogil=True, parallel=False)
+    def _gen_mapping_matrix(M: int, S: int) -> np.ndarray[tuple[int, int], np.float64]:
         """Generate a mapping matrix."""
-        M = self.M
-        S = self.S
         mapping_matrix = np.zeros((M, S))
         # make up some sparse mapping matrix, non-zero values are close to the scaled diagonal
         R = 0.01
@@ -381,6 +380,12 @@ class DataGenerated(Data):
         mapping_matrix /= mapping_matrix.sum(axis=1).reshape(-1, 1)
         return mapping_matrix
 
+    @cached_property
+    def mapping_matrix(self) -> np.ndarray[tuple[int, int], np.float64]:
+        """Generate a mapping matrix."""
+        return self._gen_mapping_matrix(self.M, self.S)
+
+    # random
     @cached_property
     def dirty_image(self) -> np.ndarray[tuple[int], np.float64]:
         """Generate a random dirty image."""
