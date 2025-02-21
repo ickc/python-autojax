@@ -4,9 +4,10 @@ import argparse
 import numpy as np
 from jax import numpy as jnp
 from jax.experimental import sparse
-from test_all import DataGenerated
 
 import autojax
+
+from .test_all import DataGenerated
 
 
 def parse_args():
