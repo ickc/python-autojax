@@ -227,7 +227,7 @@ def w_tilde_via_compact_from(
     return w_compact[p_ij[:, :, 0], p_ij[:, :, 1]]
 
 
-@jit("f8[:, ::1](f8[:, ::1], i8[:, ::1])", nopython=True, nogil=True, parallel=True)
+@jit("f8[:, ::1](f8[:, ::1], i8[:, ::1])", nopython=True, nogil=True, parallel=False)
 def w_tilde_via_preload_from(
     w_tilde_preload: np.ndarray[tuple[int, int], np.float64],
     native_index_for_slim_index: np.ndarray[tuple[int, int], np.int64],
