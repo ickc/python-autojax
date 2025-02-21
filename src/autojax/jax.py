@@ -230,6 +230,41 @@ def w_tilde_via_compact_from(
 
 
 @jax.jit
+def curvature_matrix_via_w_compact_from(
+    w_compact: np.ndarray[tuple[int, int], np.float64],
+    native_index_for_slim_index: np.ndarray[tuple[int, int], np.int64],
+    mapping_matrix: sparse.BCOO,
+) -> np.ndarray[tuple[int, int], np.float64]:
+    """
+    Returns the curvature matrix `F` (see Warren & Dye 2003) from `w_tilde`.
+
+    The dimensions of `w_tilde` are [image_pixels, image_pixels], meaning that for datasets with many image pixels
+    this matrix can take up 10's of GB of memory. The calculation of the `curvature_matrix` via this function will
+    therefore be very slow, and the method `curvature_matrix_via_w_tilde_curvature_preload_imaging_from` should be used
+    instead.
+
+    Parameters
+    ----------
+    w_tilde : ndarray, shape (M, M), dtype=float64
+        A matrix of dimensions [image_pixels, image_pixels] that encodes the convolution or NUFFT of every image pixel
+        pair on the noise map.
+    mapping_matrix : ndarray, shape (M, S), dtype=float64
+        The matrix representing the mappings between sub-grid pixels and pixelization pixels.
+
+    Returns
+    -------
+    curvature_matrix : ndarray, shape (S, S), dtype=float64
+        The curvature matrix `F` (see Warren & Dye 2003).
+    """
+    N_PRIME_MINUS1 = w_compact.shape[0] // 2
+    p_ij = (
+        native_index_for_slim_index.reshape(-1, 1, 2) - native_index_for_slim_index.reshape(1, -1, 2)
+    ) + N_PRIME_MINUS1
+    w_tilde = w_compact[p_ij[:, :, 0], p_ij[:, :, 1]]
+    return mapping_matrix.T @ w_tilde @ mapping_matrix
+
+
+@jax.jit
 def w_tilde_via_preload_from(
     w_tilde_preload: np.ndarray[tuple[int, int], np.float64],
     native_index_for_slim_index: np.ndarray[tuple[int, int], np.int64],
