@@ -64,7 +64,7 @@ class Data:
 
     _pixel_scales: float = 0.2
     _centre: float = 0.0
-    radius: float = 3.0
+    N_: int = 30
     coefficient: float = 1.0
 
     def dict(self) -> dict:
@@ -100,7 +100,11 @@ class Data:
 
     @property
     def N(self) -> int:
-        raise NotImplementedError
+        return self.N_
+
+    @property
+    def radius(self) -> float:
+        return ((self.N_ + 1) // 2) * self._pixel_scales
 
     @property
     def N_PRIME(self) -> int:
@@ -278,10 +282,6 @@ class DataLoaded(Data):
         return self.mapping_matrix.shape[0]
 
     @property
-    def N(self) -> int:
-        return 30  # hard-coded for this particular dataset
-
-    @property
     def N_PRIME(self) -> int:
         return 100  # hard-coded for this particular dataset
 
@@ -342,15 +342,10 @@ class DataLoaded(Data):
 class DataGenerated(Data):
     """Generate data for testing."""
 
-    N_: int = 30
     N_PRIME_: int = 100
     K_: int = 1024
     P_: int = 32
     S_: int = 256
-
-    @property
-    def N(self) -> int:
-        return self.N_
 
     @property
     def N_PRIME(self) -> int:
