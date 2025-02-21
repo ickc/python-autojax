@@ -7,10 +7,10 @@ from functools import cached_property
 from pathlib import Path
 
 import numpy as np
-from numba import jit
 import pytest
 from jax import numpy as jnp
 from jax.experimental import sparse
+from numba import jit
 
 from autojax import jax, numba, original
 
@@ -109,7 +109,7 @@ class Data:
 
     @property
     def N_PRIME(self) -> int:
-        raise NotImplementedError
+        return self.N_
 
     @property
     def K(self) -> int:
@@ -283,10 +283,6 @@ class DataLoaded(Data):
         return self.mapping_matrix.shape[0]
 
     @property
-    def N_PRIME(self) -> int:
-        return 100  # hard-coded for this particular dataset
-
-    @property
     def K(self) -> int:
         return self.uv_wavelengths.shape[0]
 
@@ -343,14 +339,9 @@ class DataLoaded(Data):
 class DataGenerated(Data):
     """Generate data for testing."""
 
-    N_PRIME_: int = 100
     K_: int = 1024
     P_: int = 32
     S_: int = 256
-
-    @property
-    def N_PRIME(self) -> int:
-        return self.N_PRIME_
 
     @property
     def K(self) -> int:
