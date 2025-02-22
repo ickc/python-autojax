@@ -361,7 +361,7 @@ class DataGenerated(Data):
         """Generate a mapping matrix."""
         mapping_matrix = np.zeros((M, S))
         # make up some sparse mapping matrix, non-zero values are close to the scaled diagonal
-        R = 0.01
+        R = 0.0018521191598264723
         for i in range(M):
             for j in range(S):
                 r = np.abs((i + 1) / M - (j + 1) / S)
@@ -793,6 +793,34 @@ class TestCurvatureMatrix:
         np.testing.assert_allclose(res, ref.ref["curvature_matrix_via_w_tilde_from"])
 
     @pytest.mark.benchmark
+    def test_curvature_matrix_jax_BCOO(self, data_bundle, benchmark):
+        data, ref = data_bundle
+        data_dict = data.dict()
+
+        test = "curvature_matrix"
+        benchmark.group = f"{test}_{type(data).__name__}"
+
+        noise_map_real = jnp.array(data_dict["noise_map_real"])
+        uv_wavelengths = jnp.array(data_dict["uv_wavelengths"])
+        grid_radians_slim = jnp.array(data_dict["grid_radians_slim"])
+        mapping_matrix = sparse.BCOO.fromdense(data_dict["mapping_matrix"])
+
+        def run():
+            w_tilde = jax.w_tilde_curvature_interferometer_from(
+                noise_map_real,
+                uv_wavelengths,
+                grid_radians_slim,
+            )
+            curvature_matrix = jax.curvature_matrix_via_w_tilde_from(
+                w_tilde,
+                mapping_matrix,
+            )
+            return curvature_matrix.block_until_ready()
+
+        res = benchmark(run)
+        np.testing.assert_allclose(res, ref.ref["curvature_matrix_via_w_tilde_from"])
+
+    @pytest.mark.benchmark
     def test_curvature_matrix_preload_original(self, data_bundle, benchmark):
         data, ref = data_bundle
         data_dict = data.dict()
@@ -890,6 +918,54 @@ class TestCurvatureMatrix:
                 mapping_matrix,
             )
             return curvature_matrix.block_until_ready()
+
+        res = benchmark(run)
+        np.testing.assert_allclose(res, ref.ref["curvature_matrix_via_w_tilde_from"])
+
+    @pytest.mark.benchmark
+    def test_curvature_matrix_direct_jax(self, data_bundle, benchmark):
+        data, ref = data_bundle
+        data_dict = data.dict()
+
+        test = "curvature_matrix"
+        benchmark.group = f"{test}_{type(data).__name__}"
+
+        noise_map_real = jnp.array(data_dict["noise_map_real"])
+        uv_wavelengths = jnp.array(data_dict["uv_wavelengths"])
+        grid_radians_slim = jnp.array(data_dict["grid_radians_slim"])
+        mapping_matrix = jnp.array(data_dict["mapping_matrix"])
+
+        def run():
+            return jax.curvature_matrix_direct_from(
+                noise_map_real,
+                uv_wavelengths,
+                grid_radians_slim,
+                mapping_matrix,
+            ).block_until_ready()
+
+        res = benchmark(run)
+        np.testing.assert_allclose(res, ref.ref["curvature_matrix_via_w_tilde_from"])
+
+    @pytest.mark.benchmark
+    def test_curvature_matrix_direct_jax_BCOO(self, data_bundle, benchmark):
+        data, ref = data_bundle
+        data_dict = data.dict()
+
+        test = "curvature_matrix"
+        benchmark.group = f"{test}_{type(data).__name__}"
+
+        noise_map_real = jnp.array(data_dict["noise_map_real"])
+        uv_wavelengths = jnp.array(data_dict["uv_wavelengths"])
+        grid_radians_slim = jnp.array(data_dict["grid_radians_slim"])
+        mapping_matrix = sparse.BCOO.fromdense(data_dict["mapping_matrix"])
+
+        def run():
+            return jax.curvature_matrix_direct_from(
+                noise_map_real,
+                uv_wavelengths,
+                grid_radians_slim,
+                mapping_matrix,
+            ).block_until_ready()
 
         res = benchmark(run)
         np.testing.assert_allclose(res, ref.ref["curvature_matrix_via_w_tilde_from"])
