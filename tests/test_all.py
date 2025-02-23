@@ -375,7 +375,7 @@ class DataGenerated(Data):
         """Generate a mapping matrix."""
         mapping_matrix = np.zeros((M, S))
         # make up some sparse mapping matrix, non-zero values are close to the scaled diagonal
-        R = 0.0018521191598264723
+        R = max(0.0018521191598264723, 2.0 * np.abs(1.0 / M - 1.0 / S))
         for i in range(M):
             for j in range(S):
                 r = np.abs((i + 1) / M - (j + 1) / S)
