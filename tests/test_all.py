@@ -204,6 +204,20 @@ class Data:
     def neighbors(self) -> np.ndarray[tuple[int], np.int64]:
         raise NotImplementedError
 
+    @cached_property
+    def neighbors_grid(self):
+        """Convert a neighbors array to a grid, primarily for visualization."""
+        neighbors = self.neighbors
+        S, P = neighbors.shape
+        grid = np.zeros((S, S), dtype=bool)
+        for i in range(S):
+            for p in range(P):
+                j = neighbors[i, p]
+                if j != -1:
+                    grid[i, j] = True
+                    grid[j, i] = True
+        return grid
+
     @property
     def data(self) -> np.ndarray[tuple[int], np.complex128]:
         raise NotImplementedError
@@ -397,29 +411,45 @@ class DataGenerated(Data):
 
     @cached_property
     def neighbors_sizes(self) -> np.ndarray[tuple[int], np.int64]:
-        """Generate random neighbors_sizes."""
-        S = self.S
-        P = self.P
-        rng = np.random.default_rng(deterministic_seed("neighbors", S, P))
-        return rng.integers(0, P + 1, S)
+        neighbors = self.neighbors
+        return (neighbors != -1).sum(axis=1)
 
     @cached_property
-    def neighbors(self) -> np.ndarray[tuple[int], np.int64]:
+    def neighbors(self) -> np.ndarray[tuple[int, int], np.int64]:
         """Generate random neighbors."""
         S = self.S
         P = self.P
-        neighbors_sizes = self.neighbors_sizes
         rng = np.random.default_rng(deterministic_seed("neighbors", S, P))
-        neighbors = np.full((S, P), -1, dtype=np.int64)
-        for i in range(S):
-            neighbors[i, : neighbors_sizes[i]] = np.sort(
-                rng.choice(
-                    S,
-                    neighbors_sizes[i],
-                    replace=False,
-                )
-            )
-        return neighbors
+        if S <= 0 or P <= 0:
+            raise ValueError("S and P must be positive integers.")
+        if (S * P) % 2 != 0:
+            raise ValueError("S*P must be even to generate a valid neighbors array.")
+
+        # Generate the list of stubs
+        stubs = []
+        for s in range(S):
+            stubs.extend([s] * P)
+
+        # Shuffle the stubs to randomize connections
+        rng.shuffle(stubs)
+
+        # Initialize neighbor lists for each node
+        neighbors = [[] for _ in range(S)]
+
+        # Pair the stubs and build the neighbor lists
+        for i in range(0, len(stubs), 2):
+            a = stubs[i]
+            b = stubs[i + 1]
+            neighbors[a].append(b)
+            neighbors[b].append(a)
+
+        # remove self-loop
+        for i, neighbor in enumerate(neighbors):
+            if i in neighbor:
+                neighbor.remove(i)
+                neighbor.append(-1)
+        # Convert to a numpy array of integers
+        return np.array(neighbors, dtype=int)
 
     @cached_property
     def data(self) -> np.ndarray[tuple[int], np.complex128]:
