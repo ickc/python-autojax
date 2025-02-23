@@ -544,7 +544,7 @@ class AutoTestMeta(type):
                     res = run()
                     np.testing.assert_allclose(res, ref_dict[test], rtol=2e-6)
 
-            test_method.__name__ = f"test_{test}_{new_cls.mod.__name__.split(".")[-1]}"
+            test_method.__name__ = f"test_{test}_{new_cls.mod.__name__.split('.')[-1]}"
             return test_method
 
         for test_name in tests_all:
