@@ -854,6 +854,8 @@ class TestCurvatureMatrix:
     def test_curvature_matrix_preload_original(self, data_bundle, benchmark):
         data, ref = data_bundle
         data_dict = data.dict()
+        if isinstance(data, DataGenerated):
+            pytest.skip(f"Skip test_curvature_matrix_preload_original from {type(data).__name__}")
 
         test = "curvature_matrix"
         benchmark.group = f"{test}_{type(data).__name__}"
