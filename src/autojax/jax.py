@@ -463,7 +463,7 @@ def reconstruction_positive_negative_from(
     -------
     reconstruction : ndarray, shape (S,), dtype=float64
     """
-    return jnp.linalg.solve(curvature_reg_matrix, data_vector)
+    return jax.scipy.linalg.cho_solve(jax.scipy.linalg.cho_factor(curvature_reg_matrix, lower=True), data_vector)
 
 
 @jax.jit
@@ -575,9 +575,20 @@ def log_likelihood_function(
     # shape: (S,)
     # FLOPS: 2MS
     data_vector = data_vector_from(mapping_matrix, dirty_image)
+    # FLOPS: O(S^3)
+    log_regularization_matrix_term_over2 = jnp.log(
+        jnp.diag(jax.scipy.linalg.cholesky(regularization_matrix, lower=True))
+    ).sum()
+    # we don't call reconstruction_positive_negative_from
+    # as we want to keep curvature_reg_matrix_L for the logdet
     # shape: (S,)
     # FLOPS: O(S^3)
-    reconstruction = reconstruction_positive_negative_from(data_vector, curvature_reg_matrix)
+    curvature_reg_matrix_L = jax.scipy.linalg.cholesky(curvature_reg_matrix, lower=True)
+    # shape: (S,)
+    # FLOPS: O(S^2)
+    reconstruction = jax.scipy.linalg.cho_solve((curvature_reg_matrix_L, True), data_vector)
+    # FLOPS: O(S)
+    log_curvature_reg_matrix_term_over2 = jnp.log(jnp.diag(curvature_reg_matrix_L)).sum()
 
     # (K,)
     chi_real = data.real / noise_map.real
@@ -587,13 +598,8 @@ def log_likelihood_function(
         chi_real @ chi_real + chi_imag @ chi_imag - reconstruction @ data_vector
     )
 
-    # TODO: use Cholesky decomposition here
-    log_curvature_reg_matrix_term = jnp.linalg.slogdet(curvature_reg_matrix)[1]
-    log_regularization_matrix_term = jnp.linalg.slogdet(regularization_matrix)[1]
-
-    return -0.5 * (
-        regularization_term_plus_chi_squared
-        + log_curvature_reg_matrix_term
-        - log_regularization_matrix_term
-        + noise_normalization
+    return (
+        -0.5 * (regularization_term_plus_chi_squared + noise_normalization)
+        + log_regularization_matrix_term_over2
+        - log_curvature_reg_matrix_term_over2
     )
