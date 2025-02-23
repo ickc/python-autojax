@@ -341,6 +341,8 @@ def data_vector_from(
     for simultaneously.
 
     The calculation is described in more detail in `inversion_util.w_tilde_data_interferometer_from`.
+
+    FLOPS: 2MS
     """
     return dirty_image @ mapping_matrix
 
@@ -385,6 +387,9 @@ def constant_regularization_matrix_from(
 
     A complete description of regularizatin and the `regularization_matrix` can be found in the `Regularization`
     class in the module `autoarray.inversion.regularization`.
+
+    Memory requirement: 2SP + S^2
+    FLOPS: 1 + 2S + 2SP
 
     Parameters
     ----------
@@ -443,6 +448,9 @@ def reconstruction_positive_negative_from(
     It also explicitly checks solutions where all reconstructed values go to the same value, and raises an exception if
     this occurs. This solution occurs in many scenarios when it is clear not a valid solution, and therefore is checked
     for and removed.
+
+    Memory requirement: S
+    FLOPS: O(S^3)
 
     Parameters
     ----------
@@ -553,17 +561,22 @@ def log_likelihood_function(
     # (S, S)
     curvature_matrix = curvature_matrix_via_w_tilde_from(w_tilde, mapping_matrix)
 
-    # (S, S)
+    # shape: (S, S)
+    # memory requirement: O(S^2)
+    # FLOPS: O(2SP)
     regularization_matrix = constant_regularization_matrix_from(
         coefficient,
         neighbors,
         neighbors_sizes,
     )
-    # (S, S)
+    # shape: (S, S)
+    # FLOPS: S^2
     curvature_reg_matrix = curvature_matrix + regularization_matrix
-    # (S,)
+    # shape: (S,)
+    # FLOPS: 2MS
     data_vector = data_vector_from(mapping_matrix, dirty_image)
-    # (S,)
+    # shape: (S,)
+    # FLOPS: O(S^3)
     reconstruction = reconstruction_positive_negative_from(data_vector, curvature_reg_matrix)
 
     # (K,)
@@ -574,6 +587,7 @@ def log_likelihood_function(
         chi_real @ chi_real + chi_imag @ chi_imag - reconstruction @ data_vector
     )
 
+    # TODO: use Cholesky decomposition here
     log_curvature_reg_matrix_term = jnp.linalg.slogdet(curvature_reg_matrix)[1]
     log_regularization_matrix_term = jnp.linalg.slogdet(regularization_matrix)[1]
 
