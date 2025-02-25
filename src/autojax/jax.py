@@ -244,9 +244,7 @@ def w_tilde_via_compact_from(
     native_index_for_slim_index: np.ndarray[tuple[int, int], np.int64],
 ) -> np.ndarray[tuple[int, int], np.float64]:
     N_MINUS1 = w_compact.shape[0] // 2
-    p_ij = (
-        native_index_for_slim_index.reshape(-1, 1, 2) - native_index_for_slim_index.reshape(1, -1, 2)
-    ) + N_MINUS1
+    p_ij = (native_index_for_slim_index.reshape(-1, 1, 2) - native_index_for_slim_index.reshape(1, -1, 2)) + N_MINUS1
     return w_compact[p_ij[:, :, 0], p_ij[:, :, 1]]
 
 
@@ -278,9 +276,7 @@ def curvature_matrix_via_w_compact_from(
         The curvature matrix `F` (see Warren & Dye 2003).
     """
     N_MINUS1 = w_compact.shape[0] // 2
-    p_ij = (
-        native_index_for_slim_index.reshape(-1, 1, 2) - native_index_for_slim_index.reshape(1, -1, 2)
-    ) + N_MINUS1
+    p_ij = (native_index_for_slim_index.reshape(-1, 1, 2) - native_index_for_slim_index.reshape(1, -1, 2)) + N_MINUS1
     w_tilde = w_compact[p_ij[:, :, 0], p_ij[:, :, 1]]
     return mapping_matrix.T @ w_tilde @ mapping_matrix
 
