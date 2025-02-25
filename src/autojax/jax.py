@@ -244,27 +244,6 @@ def w_tilde_curvature_interferometer_from(
 
 
 @jax.jit
-def curvature_matrix_direct_from(
-    noise_map_real: np.ndarray[tuple[int], np.float64],
-    uv_wavelengths: np.ndarray[tuple[int, int], np.float64],
-    grid_radians_slim: np.ndarray[tuple[int, int], np.float64],
-    mapping_matrix: np.ndarray[tuple[int, int], np.float64],
-) -> np.ndarray[tuple[int, int], np.float64]:
-    # assume M < K to put TWO_PI multiplication there
-    g_i = TWO_PI * grid_radians_slim.reshape(1, -1, 2)
-    u_k = uv_wavelengths.reshape(-1, 1, 2)
-    # A_ki, i<M, k<K
-    A = g_i[:, :, 0] * u_k[:, :, 1] + g_i[:, :, 1] * u_k[:, :, 0]
-
-    noise_map_real_inv = jnp.reciprocal(noise_map_real).reshape(-1, 1)
-    C = (jnp.cos(A) * noise_map_real_inv) @ mapping_matrix
-    S = (jnp.sin(A) * noise_map_real_inv) @ mapping_matrix
-
-    curvature_matrix = C.T @ C + S.T @ S
-    return curvature_matrix
-
-
-@jax.jit
 def w_tilde_curvature_compact_interferometer_from(
     noise_map_real: np.ndarray[tuple[int], np.float64],
     uv_wavelengths: np.ndarray[tuple[int, int], np.float64],
