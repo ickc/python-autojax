@@ -228,16 +228,20 @@ def w_tilde_curvature_compact_interferometer_from(
     return w
 
 
-# @jit("f8[:, ::1](f8[:, ::1], f8[:, ::1])", nopython=True, nogil=True, parallel=True)
+@jit("f8[:, ::1](f8[:, ::1], i8[:, ::1])", nopython=True, nogil=True, parallel=True)
 def w_tilde_via_compact_from(
     w_compact: np.ndarray[tuple[int, int], np.float64],
     native_index_for_slim_index: np.ndarray[tuple[int, int], np.int64],
 ) -> np.ndarray[tuple[int, int], np.float64]:
+    M = native_index_for_slim_index.shape[0]
     N_PRIME_MINUS1 = w_compact.shape[0] // 2
-    p_ij = (
-        native_index_for_slim_index.reshape(-1, 1, 2) - native_index_for_slim_index.reshape(1, -1, 2)
-    ) + N_PRIME_MINUS1
-    return w_compact[p_ij[:, :, 0], p_ij[:, :, 1]]
+    w = np.empty((M, M))
+    for i in range(M):
+        for j in range(M):
+            m = native_index_for_slim_index[i, 0] - native_index_for_slim_index[j, 0] + N_PRIME_MINUS1
+            n = native_index_for_slim_index[i, 1] - native_index_for_slim_index[j, 1] + N_PRIME_MINUS1
+            w[i, j] = w_compact[m, n]
+    return w
 
 
 @jit("f8[:, ::1](f8[:, ::1], i8[:, ::1])", nopython=True, nogil=True, parallel=False)
