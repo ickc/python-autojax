@@ -65,13 +65,13 @@ def mask_2d_circular_from(
     Parameters
     ----------
     shape_native: Tuple[int, int]
-        The (y,x) shape of the mask in units of pixels.
+        The (y,x) shape of the mask in units of pixels. Usually this is (N_PRIME, N_PRIME).
     pixel_scales
-        The scaled units to pixel units conversion factor of each pixel.
+        The scaled units to pixel units conversion factor of each pixel, in arcsec.
     radius
-        The radius (in scaled units) of the circle within which pixels unmasked.
+        The radius (in scaled units) of the circle within which pixels unmasked, in arcsec.
     centre
-            The centre of the circle used to mask pixels.
+            The centre of the circle used to mask pixels, in arcsec.
 
     Returns
     -------
