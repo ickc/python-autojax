@@ -19,6 +19,6 @@ pixi run profile.sh
 Summary of lesson learnt:
 
 - explicit vectorization and `vmap` are almost identical in performance and memory use, with (2) having slight edge on both metrics.
-- `pmap` is actually map over devices, not over cores/threads for example. This is irrelevant for the current content.
+- `pmap` is actually map over devices, not over cores/threads for example. This is irrelevant for the current context.
 - `scan` and `fori_loop` has virtually identical performance and memory use, which is superior than other methods both in speed and memory need. Memory use does not depends on $K$, which is the most important advantage.
 - `scan` has a slight edge on semantics, as it can be written in a way very similar to `vmap`. See code (`profile_jax_vmap.py` and `profile_jax_scan.py`, etc. for examples).
