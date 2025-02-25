@@ -248,20 +248,39 @@ def w_tilde_curvature_compact_interferometer_from(
     noise_map_real: np.ndarray[tuple[int], np.float64],
     uv_wavelengths: np.ndarray[tuple[int, int], np.float64],
     pixel_scale: float,
-    # only shape is used
-    grid_radians_2d: np.ndarray[tuple[int, int, int], np.float64],
+    grid_radians_2d: np.ndarray[tuple[int, int, int], np.float64],  # only its shape is used
 ) -> np.ndarray[tuple[int, int], np.float64]:
     N_MINUS1 = grid_radians_2d.shape[0] - 1
     N_W = 2 * N_MINUS1 + 1
     TWOPI_D = (jnp.pi * jnp.pi * pixel_scale) / 324000.0
 
-    temp = TWOPI_D * (jnp.arange(N_W) - N_MINUS1)
-    δ_mn0 = temp.reshape(N_W, 1, 1)
-    δ_mn1 = temp.reshape(1, N_W, 1)
+    δ_mn1 = TWOPI_D * (jnp.arange(N_W) - N_MINUS1)
+    δ_mn0 = δ_mn1.reshape(N_W, 1)
 
-    # (N_W, N_W, K) with O(4MK) elements
-    C = jnp.cos(δ_mn1 * uv_wavelengths[:, 0] - δ_mn0 * uv_wavelengths[:, 1])
-    return C @ jnp.square(jnp.reciprocal(noise_map_real))
+    def f_k(
+        noise_map_real: float,
+        uv_wavelengths: np.ndarray[tuple[int], np.float64],
+    ) -> np.ndarray[tuple[int, int], np.float64]:
+        return jnp.cos(δ_mn1 * uv_wavelengths[0] - δ_mn0 * uv_wavelengths[1]) * jnp.square(
+            jnp.reciprocal(noise_map_real)
+        )
+
+    def f_scan(
+        sum_: np.ndarray[tuple[int, int], np.float64],
+        args: tuple[float, np.ndarray[tuple[int], np.float64]],
+    ) -> tuple[np.ndarray[tuple[int, int], np.float64], None]:
+        noise_map_real, uv_wavelengths = args
+        return sum_ + f_k(noise_map_real, uv_wavelengths), None
+
+    res, _ = jax.lax.scan(
+        f_scan,
+        jnp.zeros((N_W, N_W)),
+        (
+            noise_map_real,
+            uv_wavelengths,
+        ),
+    )
+    return res
 
 
 @jax.jit
