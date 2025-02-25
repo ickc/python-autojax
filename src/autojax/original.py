@@ -120,6 +120,8 @@ def w_tilde_data_interferometer_from(
     .. math::
         \tilde{w}_{\text{data},i} = \sum_{j=1}^N \left(\frac{N_{r,j}^2}{V_{r,j}}\right)^2 \cos\left(2\pi(g_{i,1}u_{j,0} + g_{i,0}u_{j,1})\right)
 
+    The function is written in a way that the memory use does not depend on size of data K.
+
     Parameters
     ----------
     visibilities_real : ndarray, shape (K,), dtype=float64

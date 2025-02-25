@@ -117,6 +117,8 @@ def w_tilde_data_interferometer_from(
     .. math::
         \tilde{w}_{\text{data},i} = \sum_{j=1}^N \left(\frac{N_{r,j}^2}{V_{r,j}}\right)^2 \cos\left(2\pi(g_{i,1}u_{j,0} + g_{i,0}u_{j,1})\right)
 
+    The function is written in a way that the memory use does not depend on size of data K.
+
     Parameters
     ----------
     visibilities_real : ndarray, shape (K,), dtype=float64
@@ -134,12 +136,37 @@ def w_tilde_data_interferometer_from(
         A matrix that encodes the PSF convolution values between the imaging divided by the noise map**2 that enables
         efficient calculation of the data vector.
     """
-    # assume M < K to put TWO_PI multiplication there
-    g_i = TWO_PI * grid_radians_slim.reshape(-1, 1, 2)
-    u_k = uv_wavelengths.reshape(1, -1, 2)
-    # A_ik, i<M, k<K
-    A = g_i[:, :, 0] * u_k[:, :, 1] + g_i[:, :, 1] * u_k[:, :, 0]
-    return jnp.cos(A) @ jnp.square(jnp.square(noise_map_real) / visibilities_real)
+    M = grid_radians_slim.shape[0]
+    g_2pi = TWO_PI * grid_radians_slim
+    g_2pi_y = g_2pi[:, 0]
+    g_2pi_x = g_2pi[:, 1]
+
+    def f_k(
+        visibilities_real: float,
+        noise_map_real: float,
+        uv_wavelengths: np.ndarray[tuple[int], np.float64],
+    ) -> np.ndarray[tuple[int], np.float64]:
+        return jnp.cos(g_2pi_x * uv_wavelengths[0] + g_2pi_y * uv_wavelengths[1]) * (
+            jnp.square(jnp.square(noise_map_real) / visibilities_real)
+        )
+
+    def f_scan(
+        sum_: np.ndarray[tuple[int], np.float64],
+        args: tuple[float, float, np.ndarray[tuple[int], np.float64]],
+    ) -> tuple[np.ndarray[tuple[int], np.float64], None]:
+        visibilities_real, noise_map_real, uv_wavelengths = args
+        return sum_ + f_k(visibilities_real, noise_map_real, uv_wavelengths), None
+
+    res, _ = jax.lax.scan(
+        f_scan,
+        jnp.zeros(M),
+        (
+            visibilities_real,
+            noise_map_real,
+            uv_wavelengths,
+        ),
+    )
+    return res
 
 
 @jax.jit
