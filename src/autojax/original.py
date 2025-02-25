@@ -185,6 +185,8 @@ def w_tilde_curvature_interferometer_from(
     .. math::
         \tilde{W}_{ij} = \sum_{k=1}^N \frac{1}{n_k^2} \cos(2\pi[(g_{i1} - g_{j1})u_{k0} + (g_{i0} - g_{j0})u_{k1}])
 
+    The function is written in a way that the memory use does not depend on size of data K.
+
     Parameters
     ----------
     noise_map_real : ndarray, shape (K,), dtype=float64

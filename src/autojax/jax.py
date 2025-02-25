@@ -192,6 +192,8 @@ def w_tilde_curvature_interferometer_from(
     .. math::
         \tilde{W}_{ij} = \sum_{k=1}^N \frac{1}{n_k^2} \cos(2\pi[(g_{i1} - g_{j1})u_{k0} + (g_{i0} - g_{j0})u_{k1}])
 
+    The function is written in a way that the memory use does not depend on size of data K.
+
     Parameters
     ----------
     noise_map_real : ndarray, shape (K,), dtype=float64
@@ -209,18 +211,36 @@ def w_tilde_curvature_interferometer_from(
         A matrix that encodes the NUFFT values between the noise map that enables efficient calculation of the curvature
         matrix.
     """
-    # assume M < K to put TWO_PI multiplication there
-    g_i = TWO_PI * grid_radians_slim.reshape(-1, 1, 2)
-    u_k = uv_wavelengths.reshape(1, -1, 2)
-    # A_ik, i<M, k<K
-    A = g_i[:, :, 0] * u_k[:, :, 1] + g_i[:, :, 1] * u_k[:, :, 0]
+    M = grid_radians_slim.shape[0]
+    g_2pi = TWO_PI * grid_radians_slim
+    δg_2pi = g_2pi.reshape(M, 1, 2) - g_2pi.reshape(1, M, 2)
+    δg_2pi_y = δg_2pi[:, :, 0]
+    δg_2pi_x = δg_2pi[:, :, 1]
 
-    noise_map_real_inv = jnp.reciprocal(noise_map_real)
-    C = jnp.cos(A) * noise_map_real_inv
-    S = jnp.sin(A) * noise_map_real_inv
+    def f_k(
+        noise_map_real: float,
+        uv_wavelengths: np.ndarray[tuple[int], np.float64],
+    ) -> np.ndarray[tuple[int, int], np.float64]:
+        return jnp.cos(δg_2pi_x * uv_wavelengths[0] + δg_2pi_y * uv_wavelengths[1]) * jnp.reciprocal(
+            jnp.square(noise_map_real)
+        )
 
-    curvature_matrix = C @ C.T + S @ S.T
-    return curvature_matrix
+    def f_scan(
+        sum_: np.ndarray[tuple[int, int], np.float64],
+        args: tuple[float, np.ndarray[tuple[int], np.float64]],
+    ) -> tuple[np.ndarray[tuple[int, int], np.float64], None]:
+        noise_map_real, uv_wavelengths = args
+        return sum_ + f_k(noise_map_real, uv_wavelengths), None
+
+    res, _ = jax.lax.scan(
+        f_scan,
+        jnp.zeros((M, M)),
+        (
+            noise_map_real,
+            uv_wavelengths,
+        ),
+    )
+    return res
 
 
 @jax.jit

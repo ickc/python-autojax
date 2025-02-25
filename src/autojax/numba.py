@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
-from numba import jit
+from numba import jit, prange
 
 TWO_PI = 2.0 * np.pi
 LOG_TWO_PI = np.log(TWO_PI)
@@ -172,6 +172,8 @@ def w_tilde_curvature_interferometer_from(
     .. math::
         \tilde{W}_{ij} = \sum_{k=1}^N \frac{1}{n_k^2} \cos(2\pi[(g_{i1} - g_{j1})u_{k0} + (g_{i0} - g_{j0})u_{k1}])
 
+    The function is written in a way that the memory use does not depend on size of data K.
+
     Parameters
     ----------
     noise_map_real : ndarray, shape (K,), dtype=float64
@@ -189,18 +191,17 @@ def w_tilde_curvature_interferometer_from(
         A matrix that encodes the NUFFT values between the noise map that enables efficient calculation of the curvature
         matrix.
     """
-    # assume M < K to put TWO_PI multiplication there
-    g_i = TWO_PI * grid_radians_slim.reshape(-1, 1, 2)
-    u_k = uv_wavelengths.reshape(1, -1, 2)
-    # A_ik, i<M, k<N
-    A = g_i[:, :, 0] * u_k[:, :, 1] + g_i[:, :, 1] * u_k[:, :, 0]
+    M = grid_radians_slim.shape[0]
+    K = uv_wavelengths.shape[0]
+    g_2pi = TWO_PI * grid_radians_slim
+    δg_2pi = g_2pi.reshape(-1, 1, 2) - g_2pi.reshape(1, -1, 2)
 
-    noise_map_real_inv = np.reciprocal(noise_map_real)
-    C = np.cos(A) * noise_map_real_inv
-    S = np.sin(A) * noise_map_real_inv
-
-    curvature_matrix = C @ C.T + S @ S.T
-    return curvature_matrix
+    w = np.zeros((M, M))
+    for k in prange(K):
+        w += np.cos(δg_2pi[:, :, 1] * uv_wavelengths[k, 0] + δg_2pi[:, :, 0] * uv_wavelengths[k, 1]) * np.reciprocal(
+            np.square(noise_map_real[k])
+        )
+    return w
 
 
 # @jit("f8[:, ::1](f8[::1], f8[:, ::1], f8, f8[:, :, ::1])", nopython=True, nogil=True, parallel=True)
