@@ -228,7 +228,7 @@ def w_tilde_curvature_compact_interferometer_from(
     return w
 
 
-@jit("f8[:, ::1](f8[:, ::1], i8[:, ::1])", nopython=True, nogil=True, parallel=True)
+@jit("f8[:, ::1](f8[:, ::1], i8[:, ::1])", nopython=True, nogil=True, parallel=False)
 def w_tilde_via_compact_from(
     w_compact: np.ndarray[tuple[int, int], np.float64],
     native_index_for_slim_index: np.ndarray[tuple[int, int], np.int64],
