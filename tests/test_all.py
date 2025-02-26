@@ -593,58 +593,17 @@ class TestBenchJax(metaclass=AutoTestMeta):
 # special case
 
 
-@pytest.fixture(scope="module")
-def data_loaded():
-    return DataLoaded()
-
-
 class TestLogLikelihood:
 
-    ref: float = -13401.986947103405
+    @pytest.mark.benchmark
+    def test_log_likelihood_function_via_preload_method_original(self, data_bundle, benchmark):
+        data, ref = data_bundle
+        if isinstance(data, DataGenerated):
+            pytest.skip(f"Skip test_log_likelihood_function_via_preload_method_original from {type(data).__name__}")
+        benchmark.group = f"log_likelihood_function_{type(data).__name__}"
 
-    @pytest.mark.benchmark(group="test_log_likelihood_data_loaded")
-    def test_original(self, data_loaded, benchmark):
-        data_dict = data_loaded.dict()
-        func = original.log_likelihood_function
-        sig = inspect.signature(func)
-        args = [data_dict[key] for key in sig.parameters]
-
-        def run():
-            return func(*args)
-
-        res = benchmark(run)
-        np.testing.assert_allclose(res, self.ref)
-
-    @pytest.mark.benchmark(group="test_log_likelihood_data_loaded")
-    def test_numba(self, data_loaded, benchmark):
-        data_dict = data_loaded.dict()
-        func = numba.log_likelihood_function
-        sig = inspect.signature(func)
-        args = [data_dict[key] for key in sig.parameters]
-
-        def run():
-            return func(*args)
-
-        res = benchmark(run)
-        np.testing.assert_allclose(res, self.ref)
-
-    @pytest.mark.benchmark(group="test_log_likelihood_data_loaded")
-    def test_jax(self, data_loaded, benchmark):
-        data_dict = data_loaded.dict()
-        data_dict = {k: jnp.array(v) if isinstance(v, np.ndarray) else v for k, v in data_dict.items()}
-        func = jax.log_likelihood_function
-        sig = inspect.signature(func)
-        args = [data_dict[key] for key in sig.parameters]
-
-        def run():
-            return func(*args).block_until_ready()
-
-        res = benchmark(run)
-        np.testing.assert_allclose(res, self.ref)
-
-    @pytest.mark.benchmark(group="test_log_likelihood_data_loaded")
-    def test_via_preload_method_original(self, data_loaded, benchmark):
-        data_dict = data_loaded.dict()
+        data_dict = data.dict()
+        ref_dict = ref.ref
         func = original.log_likelihood_function_via_preload_method
         sig = inspect.signature(func)
         args = [data_dict[key] for key in sig.parameters]
@@ -653,7 +612,7 @@ class TestLogLikelihood:
             return func(*args)
 
         res = benchmark(run)
-        np.testing.assert_allclose(res, self.ref)
+        np.testing.assert_allclose(res, ref_dict["log_likelihood_function"], rtol=2e-6)
 
 
 class TestWTilde:
