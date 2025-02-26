@@ -216,6 +216,7 @@ def w_tilde_curvature_compact_interferometer_from(
     OFFSET = N - 1
     # no. of elements after taking the difference of a point in a grid to another
     N_DIFF = 2 * N - 1
+    # This converts from arcsec to radian too
     TWOPI_D = (np.pi * np.pi * pixel_scale) / 324000.0
 
     δ_mn0 = (TWOPI_D * np.arange(grid_size, dtype=np.float64)).reshape(-1, 1)
@@ -246,9 +247,8 @@ def w_tilde_via_compact_from(
             j_1 = native_index_for_slim_index[j, 1]
             m = i_0 - j_0
             # flip i, j if m < 0 as cos(-x) = cos(x)
-            m_abs = m if m >= 0 else -m
             n = (i_1 - j_1 if m >= 0 else j_1 - i_1) + OFFSET
-            w[i, j] = w_compact[m_abs, n]
+            w[i, j] = w_compact[np.abs(m), n]
     return w
 
 
