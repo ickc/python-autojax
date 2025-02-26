@@ -297,7 +297,7 @@ def w_tilde_via_compact_from(
 def curvature_matrix_via_w_compact_from(
     w_compact: np.ndarray[tuple[int, int], np.float64],
     native_index_for_slim_index: np.ndarray[tuple[int, int], np.int64],
-    mapping_matrix: sparse.BCOO,
+    mapping_matrix: np.ndarray[tuple[int, int], np.float64],
 ) -> np.ndarray[tuple[int, int], np.float64]:
     """
     Returns the curvature matrix `F` (see Warren & Dye 2003) from `w_tilde`.
