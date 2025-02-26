@@ -219,12 +219,12 @@ def w_tilde_curvature_compact_interferometer_from(
     δ_mn1 = TWOPI_D * (np.arange(N_W) - N_PRIME_MINUS1)
     δ_mn0 = δ_mn1.reshape(N_W, 1)
 
-    w = np.zeros((N_W, N_W))
+    w_compact = np.zeros((N_W, N_W))
     for k in prange(K):
-        w += np.cos(δ_mn1 * uv_wavelengths[k, 0] - δ_mn0 * uv_wavelengths[k, 1]) * np.square(
+        w_compact += np.cos(δ_mn1 * uv_wavelengths[k, 0] - δ_mn0 * uv_wavelengths[k, 1]) * np.square(
             np.reciprocal(noise_map_real[k])
         )
-    return w
+    return w_compact
 
 
 @jit("f8[:, ::1](f8[:, ::1], i8[:, ::1])", nopython=True, nogil=True, parallel=False)
