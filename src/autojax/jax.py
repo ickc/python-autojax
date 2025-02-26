@@ -250,12 +250,16 @@ def w_tilde_curvature_compact_interferometer_from(
     uv_wavelengths: np.ndarray[tuple[int, int], np.float64],
     pixel_scale: float,
 ) -> np.ndarray[tuple[int, int], np.float64]:
-    N_MINUS1 = grid_size - 1
-    N_W = 2 * N_MINUS1 + 1
+    N = grid_size
+    OFFSET = N - 1
+    # no. of elements after taking the difference of a point in a grid to another
+    N_DIFF = 2 * N - 1
+    # This converts from arcsec to radian too
     TWOPI_D = (jnp.pi * jnp.pi * pixel_scale) / 324000.0
 
-    δ_mn1 = TWOPI_D * (jnp.arange(N_W) - N_MINUS1)
-    δ_mn0 = δ_mn1.reshape(N_W, 1)
+    δ_mn0 = (TWOPI_D * jnp.arange(grid_size, dtype=jnp.float64)).reshape(-1, 1)
+    # shift the centre in the 1-axis
+    δ_mn1 = TWOPI_D * (jnp.arange(N_DIFF, dtype=jnp.float64) - OFFSET)
 
     def f_k(
         noise_map_real: float,
@@ -274,7 +278,7 @@ def w_tilde_curvature_compact_interferometer_from(
 
     w_compact, _ = jax.lax.scan(
         f_scan,
-        jnp.zeros((N_W, N_W)),
+        jnp.zeros((N, N_DIFF)),
         (
             noise_map_real,
             uv_wavelengths,
@@ -288,9 +292,14 @@ def w_tilde_via_compact_from(
     w_compact: np.ndarray[tuple[int, int], np.float64],
     native_index_for_slim_index: np.ndarray[tuple[int, int], np.int64],
 ) -> np.ndarray[tuple[int, int], np.float64]:
-    N_MINUS1 = w_compact.shape[0] // 2
-    p_ij = (native_index_for_slim_index.reshape(-1, 1, 2) - native_index_for_slim_index.reshape(1, -1, 2)) + N_MINUS1
-    return w_compact[p_ij[:, :, 0], p_ij[:, :, 1]]
+    N = w_compact.shape[0]
+    OFFSET = N - 1
+    p_ij = native_index_for_slim_index.reshape(-1, 1, 2) - native_index_for_slim_index.reshape(1, -1, 2)
+    # flip i, j if first index is negative as cos(-x) = cos(x)
+    # this essentially moved the sign of the first index to the second index, and then adds an offset to the second index
+    p_ij_1 = jnp.where(jnp.signbit(p_ij[:, :, 0]), -p_ij[:, :, 1], p_ij[:, :, 1]) + OFFSET
+    p_ij_0 = jnp.abs(p_ij[:, :, 0])
+    return w_compact[p_ij_0, p_ij_1]
 
 
 @jax.jit
@@ -320,9 +329,7 @@ def curvature_matrix_via_w_compact_from(
     curvature_matrix : ndarray, shape (S, S), dtype=float64
         The curvature matrix `F` (see Warren & Dye 2003).
     """
-    N_MINUS1 = w_compact.shape[0] // 2
-    p_ij = (native_index_for_slim_index.reshape(-1, 1, 2) - native_index_for_slim_index.reshape(1, -1, 2)) + N_MINUS1
-    w_tilde = w_compact[p_ij[:, :, 0], p_ij[:, :, 1]]
+    w_tilde = w_tilde_via_compact_from(w_compact, native_index_for_slim_index)
     return mapping_matrix.T @ w_tilde @ mapping_matrix
 
 

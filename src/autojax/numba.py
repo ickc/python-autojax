@@ -204,7 +204,7 @@ def w_tilde_curvature_interferometer_from(
     return w
 
 
-@jit("f8[:, ::1](i4, f8[::1], f8[:, ::1], f8)", nopython=True, nogil=True, parallel=True)
+@jit("f8[:, ::1](i8, f8[::1], f8[:, ::1], f8)", nopython=True, nogil=True, parallel=True)
 def w_tilde_curvature_compact_interferometer_from(
     grid_size: int,
     noise_map_real: np.ndarray[tuple[int], np.float64],
@@ -212,14 +212,17 @@ def w_tilde_curvature_compact_interferometer_from(
     pixel_scale: float,
 ) -> np.ndarray[tuple[int, int], np.float64]:
     K = uv_wavelengths.shape[0]
-    N_PRIME_MINUS1 = grid_size - 1
-    N_W = 2 * N_PRIME_MINUS1 + 1
+    N = grid_size
+    OFFSET = N - 1
+    # no. of elements after taking the difference of a point in a grid to another
+    N_DIFF = 2 * N - 1
     TWOPI_D = (np.pi * np.pi * pixel_scale) / 324000.0
 
-    δ_mn1 = TWOPI_D * (np.arange(N_W) - N_PRIME_MINUS1)
-    δ_mn0 = δ_mn1.reshape(N_W, 1)
+    δ_mn0 = (TWOPI_D * np.arange(grid_size, dtype=np.float64)).reshape(-1, 1)
+    # shift the centre in the 1-axis
+    δ_mn1 = TWOPI_D * (np.arange(N_DIFF, dtype=np.float64) - OFFSET)
 
-    w_compact = np.zeros((N_W, N_W))
+    w_compact = np.zeros((N, N_DIFF))
     for k in prange(K):
         w_compact += np.cos(δ_mn1 * uv_wavelengths[k, 0] - δ_mn0 * uv_wavelengths[k, 1]) * np.square(
             np.reciprocal(noise_map_real[k])
@@ -233,13 +236,19 @@ def w_tilde_via_compact_from(
     native_index_for_slim_index: np.ndarray[tuple[int, int], np.int64],
 ) -> np.ndarray[tuple[int, int], np.float64]:
     M = native_index_for_slim_index.shape[0]
-    N_PRIME_MINUS1 = w_compact.shape[0] // 2
+    OFFSET = w_compact.shape[0] - 1
     w = np.empty((M, M))
     for i in range(M):
         for j in range(M):
-            m = native_index_for_slim_index[i, 0] - native_index_for_slim_index[j, 0] + N_PRIME_MINUS1
-            n = native_index_for_slim_index[i, 1] - native_index_for_slim_index[j, 1] + N_PRIME_MINUS1
-            w[i, j] = w_compact[m, n]
+            i_0 = native_index_for_slim_index[i, 0]
+            i_1 = native_index_for_slim_index[i, 1]
+            j_0 = native_index_for_slim_index[j, 0]
+            j_1 = native_index_for_slim_index[j, 1]
+            m = i_0 - j_0
+            # flip i, j if m < 0 as cos(-x) = cos(x)
+            m_abs = m if m >= 0 else -m
+            n = (i_1 - j_1 if m >= 0 else j_1 - i_1) + OFFSET
+            w[i, j] = w_compact[m_abs, n]
     return w
 
 
