@@ -63,7 +63,7 @@ def deterministic_seed(string: str, *numbers: int) -> int:
 class Data:
     """Test data."""
 
-    _pixel_scales: float = 0.2
+    pixel_scale: float = 0.2
     _centre: float = 0.0
     N_: int = 30
     coefficient: float = 1.0
@@ -105,7 +105,7 @@ class Data:
 
     @property
     def radius(self) -> float:
-        return ((self.N_ + 1) // 2) * self._pixel_scales
+        return ((self.N_ + 1) // 2) * self.pixel_scale
 
     @property
     def N_PRIME(self) -> int:
@@ -140,7 +140,7 @@ class Data:
     @property
     def pixel_scales(self) -> tuple[float, float]:
         """Get the pixel scales of the native grid."""
-        return self._pixel_scales, self._pixel_scales
+        return self.pixel_scale, self.pixel_scale
 
     @property
     def centre(self) -> tuple[float, float]:
@@ -171,7 +171,7 @@ class Data:
     def grid_radians_2d(self) -> np.ndarray[tuple[int, int, int], np.float64]:
         N = self.N_PRIME
         arcsec = np.pi / 648000
-        d = self._pixel_scales * arcsec
+        d = self.pixel_scale * arcsec
         g_000 = 9.9 * arcsec  # hard-coded to match the dataset
         g_001 = -g_000
         I, J = np.mgrid[:N, :N]
@@ -694,7 +694,7 @@ class TestWTilde:
         uv_wavelengths = data_dict["uv_wavelengths"]
         grid_radians_2d = data_dict["grid_radians_2d"]
         native_index_for_slim_index = data_dict["native_index_for_slim_index"]
-        pixel_scale = data._pixel_scales
+        pixel_scale = data.pixel_scale
 
         def run():
             w_compact = numba.w_tilde_curvature_compact_interferometer_from(
@@ -720,7 +720,7 @@ class TestWTilde:
         uv_wavelengths = jnp.array(data_dict["uv_wavelengths"])
         grid_radians_2d = jnp.array(data_dict["grid_radians_2d"])
         native_index_for_slim_index = jnp.array(data_dict["native_index_for_slim_index"])
-        pixel_scale = data._pixel_scales
+        pixel_scale = data.pixel_scale
 
         def run():
             w_compact = jax.w_tilde_curvature_compact_interferometer_from(
@@ -903,7 +903,7 @@ class TestCurvatureMatrix:
         grid_radians_2d = jnp.array(data_dict["grid_radians_2d"])
         native_index_for_slim_index = jnp.array(data_dict["native_index_for_slim_index"])
         mapping_matrix = jnp.array(data_dict["mapping_matrix"])
-        pixel_scale = data._pixel_scales
+        pixel_scale = data.pixel_scale
 
         def run():
             w_compact = jax.w_tilde_curvature_compact_interferometer_from(
@@ -935,7 +935,7 @@ class TestCurvatureMatrix:
         grid_radians_2d = jnp.array(data_dict["grid_radians_2d"])
         native_index_for_slim_index = jnp.array(data_dict["native_index_for_slim_index"])
         mapping_matrix = sparse.BCOO.fromdense(data_dict["mapping_matrix"])
-        pixel_scale = data._pixel_scales
+        pixel_scale = data.pixel_scale
 
         def run():
             w_compact = jax.w_tilde_curvature_compact_interferometer_from(
