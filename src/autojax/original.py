@@ -706,8 +706,7 @@ def log_likelihood_function(
     dirty_image: np.ndarray[tuple[int], np.float64],
     data: np.ndarray[tuple[int], np.complex128],
     noise_map: np.ndarray[tuple[int], np.complex128],
-    uv_wavelengths: np.ndarray[tuple[int, int], np.float64],
-    grid_radians_slim: np.ndarray[tuple[int, int], np.float64],
+    w_tilde: np.ndarray[tuple[int, int], np.float64],
     mapping_matrix: np.ndarray[tuple[int, int], np.float64],
     neighbors: np.ndarray[tuple[int, int], np.int64],
     neighbors_sizes: np.ndarray[tuple[int], np.int64],
@@ -760,11 +759,6 @@ def log_likelihood_function(
     coefficient = 1.0
 
     data_vector = data_vector_from(mapping_matrix, dirty_image)
-    w_tilde = w_tilde_curvature_interferometer_from(
-        noise_map.real,
-        uv_wavelengths,
-        grid_radians_slim,
-    )
     curvature_matrix = curvature_matrix_via_w_tilde_from(w_tilde, mapping_matrix)
     regularization_matrix = constant_regularization_matrix_from(
         coefficient,
