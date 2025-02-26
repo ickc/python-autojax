@@ -594,6 +594,13 @@ class TestBenchJax(metaclass=AutoTestMeta):
 
 
 class TestLogLikelihood:
+    """Add the original preload method to the benchmark too.
+
+    Example
+    -------
+
+        pytest -m benchmark -k test_log_likelihood_function
+    """
 
     @pytest.mark.benchmark
     def test_log_likelihood_function_via_preload_method_original(self, data_bundle, benchmark):
