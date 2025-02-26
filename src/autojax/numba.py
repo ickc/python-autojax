@@ -252,16 +252,6 @@ def w_tilde_via_compact_from(
     return w
 
 
-@jit("f8[:, ::1](f8[:, ::1], i8[:, ::1], f8[:, ::1])", nopython=True, nogil=True, parallel=False)
-def curvature_matrix_via_w_compact_from(
-    w_compact: np.ndarray[tuple[int, int], np.float64],
-    native_index_for_slim_index: np.ndarray[tuple[int, int], np.int64],
-    mapping_matrix: np.ndarray[tuple[int, int], np.float64],
-) -> np.ndarray[tuple[int, int], np.float64]:
-    w_tilde = w_tilde_via_compact_from(w_compact, native_index_for_slim_index)
-    return mapping_matrix.T @ w_tilde @ mapping_matrix
-
-
 @jit("f8[:, ::1](f8[:, ::1], i8[:, ::1])", nopython=True, nogil=True, parallel=False)
 def w_tilde_via_preload_from(
     w_tilde_preload: np.ndarray[tuple[int, int], np.float64],
@@ -354,6 +344,16 @@ def curvature_matrix_via_w_tilde_from(
         The curvature matrix `F` (see Warren & Dye 2003).
     """
     return mapping_matrix.T @ w_tilde @ mapping_matrix
+
+
+@jit("f8[:, ::1](f8[:, ::1], i8[:, ::1], f8[:, ::1])", nopython=True, nogil=True, parallel=False)
+def curvature_matrix_via_w_compact_from(
+    w_compact: np.ndarray[tuple[int, int], np.float64],
+    native_index_for_slim_index: np.ndarray[tuple[int, int], np.int64],
+    mapping_matrix: np.ndarray[tuple[int, int], np.float64],
+) -> np.ndarray[tuple[int, int], np.float64]:
+    w_tilde = w_tilde_via_compact_from(w_compact, native_index_for_slim_index)
+    return curvature_matrix_via_w_tilde_from(w_tilde, mapping_matrix)
 
 
 @jit("f8[:, ::1](f8, i8[:, ::1], i8[::1])", nopython=True, nogil=True, parallel=False)
@@ -453,7 +453,7 @@ def noise_normalization_complex_from(
 
 
 @jit(
-    "f8(f8[::1], c16[::1], c16[::1], f8[:, ::1], f8[:, ::1], f8[:, ::1], i8[:, ::1], i8[::1])",
+    "f8(f8[::1], c16[::1], c16[::1], f8[:, ::1], i8[:, ::1], f8[:, ::1], i8[:, ::1], i8[::1])",
     nopython=True,
     nogil=True,
     parallel=True,
@@ -462,8 +462,8 @@ def log_likelihood_function(
     dirty_image: np.ndarray[tuple[int], np.float64],
     data: np.ndarray[tuple[int], np.complex128],
     noise_map: np.ndarray[tuple[int], np.complex128],
-    uv_wavelengths: np.ndarray[tuple[int, int], np.float64],
-    grid_radians_slim: np.ndarray[tuple[int, int], np.float64],
+    w_compact: np.ndarray[tuple[int, int], np.float64],
+    native_index_for_slim_index: np.ndarray[tuple[int, int], np.int64],
     mapping_matrix: np.ndarray[tuple[int, int], np.float64],
     neighbors: np.ndarray[tuple[int, int], np.int64],
     neighbors_sizes: np.ndarray[tuple[int], np.int64],
@@ -517,15 +517,8 @@ def log_likelihood_function(
 
     noise_normalization: float = noise_normalization_complex_from(noise_map)
 
-    # (M, M)
-    w_tilde = w_tilde_curvature_interferometer_from(
-        np.ascontiguousarray(noise_map.real),
-        uv_wavelengths,
-        grid_radians_slim,
-    )
-
     # (S, S)
-    curvature_matrix = curvature_matrix_via_w_tilde_from(w_tilde, mapping_matrix)
+    curvature_matrix = curvature_matrix_via_w_compact_from(w_compact, native_index_for_slim_index, mapping_matrix)
 
     # (S, S)
     regularization_matrix = constant_regularization_matrix_from(

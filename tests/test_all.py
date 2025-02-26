@@ -85,6 +85,7 @@ class Data:
             "native_index_for_slim_index": self.native_index_for_slim_index,
             "w_tilde": self.w_tilde,
             "w_tilde_preload": self.w_tilde_preload,
+            "w_compact": self.w_compact,
             "curvature_preload": self.w_tilde_preload,
             "neighbors_sizes": self.neighbors_sizes,
             "neighbors": self.neighbors,
@@ -254,6 +255,15 @@ class Data:
             self.uv_wavelengths,
             self.shape_masked_pixels_2d,
             self.grid_radians_2d,
+        )
+
+    @cached_property
+    def w_compact(self) -> np.ndarray[tuple[int, int], np.float64]:
+        return numba.w_tilde_curvature_compact_interferometer_from(
+            self.N,
+            self.noise_map_real,
+            self.uv_wavelengths,
+            self.pixel_scale,
         )
 
     @cached_property
