@@ -692,16 +692,16 @@ class TestWTilde:
 
         noise_map_real = data_dict["noise_map_real"]
         uv_wavelengths = data_dict["uv_wavelengths"]
-        grid_radians_2d = data_dict["grid_radians_2d"]
+        N = data.N
         native_index_for_slim_index = data_dict["native_index_for_slim_index"]
         pixel_scale = data.pixel_scale
 
         def run():
             w_compact = numba.w_tilde_curvature_compact_interferometer_from(
+                N,
                 noise_map_real,
                 uv_wavelengths,
                 pixel_scale,
-                grid_radians_2d,
             )
             return numba.w_tilde_via_compact_from(w_compact, native_index_for_slim_index)
 
@@ -718,16 +718,16 @@ class TestWTilde:
 
         noise_map_real = jnp.array(data_dict["noise_map_real"])
         uv_wavelengths = jnp.array(data_dict["uv_wavelengths"])
-        grid_radians_2d = jnp.array(data_dict["grid_radians_2d"])
+        N = data.N
         native_index_for_slim_index = jnp.array(data_dict["native_index_for_slim_index"])
         pixel_scale = data.pixel_scale
 
         def run():
             w_compact = jax.w_tilde_curvature_compact_interferometer_from(
+                N,
                 noise_map_real,
                 uv_wavelengths,
                 pixel_scale,
-                grid_radians_2d,
             )
             return jax.w_tilde_via_compact_from(w_compact, native_index_for_slim_index).block_until_ready()
 
@@ -900,17 +900,17 @@ class TestCurvatureMatrix:
 
         noise_map_real = jnp.array(data_dict["noise_map_real"])
         uv_wavelengths = jnp.array(data_dict["uv_wavelengths"])
-        grid_radians_2d = jnp.array(data_dict["grid_radians_2d"])
+        N = data.N
         native_index_for_slim_index = jnp.array(data_dict["native_index_for_slim_index"])
         mapping_matrix = jnp.array(data_dict["mapping_matrix"])
         pixel_scale = data.pixel_scale
 
         def run():
             w_compact = jax.w_tilde_curvature_compact_interferometer_from(
+                N,
                 noise_map_real,
                 uv_wavelengths,
                 pixel_scale,
-                grid_radians_2d,
             )
             curvature_matrix = jax.curvature_matrix_via_w_compact_from(
                 w_compact,
@@ -932,17 +932,17 @@ class TestCurvatureMatrix:
 
         noise_map_real = jnp.array(data_dict["noise_map_real"])
         uv_wavelengths = jnp.array(data_dict["uv_wavelengths"])
-        grid_radians_2d = jnp.array(data_dict["grid_radians_2d"])
+        N = data.N
         native_index_for_slim_index = jnp.array(data_dict["native_index_for_slim_index"])
         mapping_matrix = sparse.BCOO.fromdense(data_dict["mapping_matrix"])
         pixel_scale = data.pixel_scale
 
         def run():
             w_compact = jax.w_tilde_curvature_compact_interferometer_from(
+                N,
                 noise_map_real,
                 uv_wavelengths,
                 pixel_scale,
-                grid_radians_2d,
             )
             curvature_matrix = jax.curvature_matrix_via_w_compact_from(
                 w_compact,

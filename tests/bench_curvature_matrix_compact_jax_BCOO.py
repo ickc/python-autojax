@@ -27,7 +27,6 @@ def main(args=None):
         if args is None
         else DataGenerated(
             N_=args.N,
-            N_PRIME_=args.N_PRIME,
             K_=args.K,
             P_=args.P,
             S_=args.S,
@@ -40,7 +39,7 @@ def main(args=None):
     grid_radians_2d = data_dict["grid_radians_2d"]
     native_index_for_slim_index = data_dict["native_index_for_slim_index"]
     mapping_matrix = data_dict["mapping_matrix"]
-    pixel_scale = data._pixel_scales
+    pixel_scale = data.pixel_scale
 
     for i in ("noise_map_real", "uv_wavelengths", "grid_radians_2d", "native_index_for_slim_index", "mapping_matrix"):
         var = locals()[i]
@@ -55,10 +54,10 @@ def main(args=None):
 
     def run():
         w_compact = autojax.jax.w_tilde_curvature_compact_interferometer_from(
+            args.N,
             noise_map_real,
             uv_wavelengths,
             pixel_scale,
-            grid_radians_2d,
         )
         curvature_matrix = autojax.jax.curvature_matrix_via_w_compact_from(
             w_compact,

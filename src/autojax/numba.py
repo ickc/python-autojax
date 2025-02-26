@@ -204,16 +204,15 @@ def w_tilde_curvature_interferometer_from(
     return w
 
 
-@jit("f8[:, ::1](f8[::1], f8[:, ::1], f8, f8[:, :, ::1])", nopython=True, nogil=True, parallel=True)
+@jit("f8[:, ::1](i4, f8[::1], f8[:, ::1], f8)", nopython=True, nogil=True, parallel=True)
 def w_tilde_curvature_compact_interferometer_from(
+    grid_size: int,
     noise_map_real: np.ndarray[tuple[int], np.float64],
     uv_wavelengths: np.ndarray[tuple[int, int], np.float64],
     pixel_scale: float,
-    # only shape is used
-    grid_radians_2d: np.ndarray[tuple[int, int, int], np.float64],
 ) -> np.ndarray[tuple[int, int], np.float64]:
     K = uv_wavelengths.shape[0]
-    N_PRIME_MINUS1 = grid_radians_2d.shape[0] - 1
+    N_PRIME_MINUS1 = grid_size - 1
     N_W = 2 * N_PRIME_MINUS1 + 1
     TWOPI_D = (np.pi * np.pi * pixel_scale) / 324000.0
 

@@ -11,9 +11,7 @@ from .test_all import DataGenerated
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    # N, N_PRIME, K, P, S
     parser.add_argument("-N", type=int, default=30)
-    parser.add_argument("--N-PRIME", type=int, default=100)
     parser.add_argument("-K", type=int, default=1024)
     parser.add_argument("-P", type=int, default=32)
     parser.add_argument("-S", type=int, default=256)
@@ -26,7 +24,6 @@ def main(args=None):
         if args is None
         else DataGenerated(
             N_=args.N,
-            N_PRIME_=args.N_PRIME,
             K_=args.K,
             P_=args.P,
             S_=args.S,

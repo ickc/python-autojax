@@ -243,14 +243,14 @@ def w_tilde_curvature_interferometer_from(
     return res
 
 
-@jax.jit
+@partial(jax.jit, static_argnums=0)
 def w_tilde_curvature_compact_interferometer_from(
+    grid_size: int,
     noise_map_real: np.ndarray[tuple[int], np.float64],
     uv_wavelengths: np.ndarray[tuple[int, int], np.float64],
     pixel_scale: float,
-    grid_radians_2d: np.ndarray[tuple[int, int, int], np.float64],  # only its shape is used
 ) -> np.ndarray[tuple[int, int], np.float64]:
-    N_MINUS1 = grid_radians_2d.shape[0] - 1
+    N_MINUS1 = grid_size - 1
     N_W = 2 * N_MINUS1 + 1
     TWOPI_D = (jnp.pi * jnp.pi * pixel_scale) / 324000.0
 
@@ -272,7 +272,7 @@ def w_tilde_curvature_compact_interferometer_from(
         noise_map_real, uv_wavelengths = args
         return sum_ + f_k(noise_map_real, uv_wavelengths), None
 
-    res, _ = jax.lax.scan(
+    w_compact, _ = jax.lax.scan(
         f_scan,
         jnp.zeros((N_W, N_W)),
         (
@@ -280,7 +280,7 @@ def w_tilde_curvature_compact_interferometer_from(
             uv_wavelengths,
         ),
     )
-    return res
+    return w_compact
 
 
 @jax.jit
@@ -584,9 +584,13 @@ def log_likelihood_function(
     Typical sizes: (716 -> 70000 means 716 in the test dataset, but can go up to 70000 in science case)
 
     M = number of image pixels in real_space_mask = 716 -> ~70000 => M^2 ~ 5e9
-    K = number of visibilitiies = 190 -> ~1e7 (but this is only used to compute w_tilde otuside the likelihood function) => KS ~1e10
+    K = number of visibilitiies = 190 -> ~1e7 (but this is only used to compute w_tilde otuside the likelihood function)
     P = number of neighbors = 10 -> 3 (for Delaunay) but can go up to 300 for Voronoi (but we can just focus on delaunay for now)
     S = number of source pixels (e.g. reconstruction.shape) = 716 -> 1000
+
+    With these numbers,
+    ``w_tilde`` is 36.5GiB,
+    ``mapping_matrix`` is 0.52GiB.
     """
     coefficient = 1.0
 
