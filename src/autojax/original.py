@@ -814,9 +814,7 @@ def log_likelihood_function_via_preload_method(
     dirty_image: np.ndarray[tuple[int], np.float64],
     data: np.ndarray[tuple[int], np.complex128],
     noise_map: np.ndarray[tuple[int], np.complex128],
-    shape_masked_pixels_2d: tuple[int, int],
-    grid_radians_2d: np.ndarray[tuple[int, int, int], np.float64],
-    uv_wavelengths: np.ndarray[tuple[int, int], np.float64],
+    w_tilde_preload: np.ndarray[tuple[int, int], np.float64],
     mapping_matrix: np.ndarray[tuple[int, int], np.float64],
     neighbors: np.ndarray[tuple[int, int], np.int64],
     neighbors_sizes: np.ndarray[tuple[int], np.int64],
@@ -890,12 +888,6 @@ def log_likelihood_function_via_preload_method(
     coefficient = 1.0
 
     data_vector = data_vector_from(mapping_matrix, dirty_image)
-    w_tilde_preload = w_tilde_curvature_preload_interferometer_from(
-        noise_map.real,
-        uv_wavelengths,
-        shape_masked_pixels_2d,
-        grid_radians_2d,
-    )
     curvature_matrix = curvature_matrix_via_w_tilde_curvature_preload_interferometer_from(
         w_tilde_preload,
         pix_indexes_for_sub_slim_index,
