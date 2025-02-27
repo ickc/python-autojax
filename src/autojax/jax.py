@@ -436,13 +436,19 @@ def mapping_matrix_from(
     """
     M = pix_indexes_for_sub_slim_index.shape[0]
     S = pixels
+    # as the mapping matrix is M by S, S would be out of bound (any out of bound index would do)
+    OUT_OF_BOUND_IDX = S
     B = pix_indexes_for_sub_slim_index.shape[1]
+    pix_indexes_for_sub_slim_index = pix_indexes_for_sub_slim_index.flatten()
+    pix_indexes_for_sub_slim_index = jnp.where(
+        pix_indexes_for_sub_slim_index == -1, OUT_OF_BOUND_IDX, pix_indexes_for_sub_slim_index
+    )
 
     I_IDX = jnp.repeat(jnp.arange(M), B)
     return (
-        jnp.zeros((M, S))
-        .at[I_IDX, pix_indexes_for_sub_slim_index.flatten()]
-        .set(pix_weights_for_sub_slim_index.flatten())
+        jnp.zeros((M, S)).at[I_IDX, pix_indexes_for_sub_slim_index]
+        # unique indices should be guranteed by pix_indexes_for_sub_slim_index-spec
+        .set(pix_weights_for_sub_slim_index.flatten(), mode="drop", unique_indices=True)
     )
 
 

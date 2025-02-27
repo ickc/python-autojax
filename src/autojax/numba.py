@@ -287,9 +287,10 @@ def w_tilde_via_preload_from(
     return w
 
 
-@jit("f8[:, ::1](i8[:, ::1], f8[:, ::1], i8)", nopython=True, nogil=True, parallel=True)
+@jit("f8[:, ::1](i8[:, ::1], i8[::1], f8[:, ::1], i8)", nopython=True, nogil=True, parallel=True)
 def mapping_matrix_from(
     pix_indexes_for_sub_slim_index: np.ndarray[tuple[int, int], np.int64],
+    pix_size_for_sub_slim_index: np.ndarray[tuple[int], np.int64],
     pix_weights_for_sub_slim_index: np.ndarray[np.ndarray[tuple[int, int], np.float64]],
     pixels: int,
 ) -> np.ndarray[tuple[int, int], np.float64]:
@@ -351,6 +352,8 @@ def mapping_matrix_from(
     ----------
     pix_indexes_for_sub_slim_index : ndarray, shape (M, B), dtype=int64
         The mappings from a data sub-pixel index to a pixelization pixel index.
+    pix_size_for_sub_slim_index : ndarray, shape (M,), dtype=int64
+        The number of mappings between each data sub pixel and pixelization pixel.
     pix_weights_for_sub_slim_index : ndarray, shape (M, B), dtype=float64
         The weights of the mappings of every data sub pixel and pixelization pixel.
     pixels
@@ -360,10 +363,11 @@ def mapping_matrix_from(
     """
     M = pix_indexes_for_sub_slim_index.shape[0]
     S = pixels
-    B = pix_indexes_for_sub_slim_index.shape[1]
 
     mapping_matrix = np.zeros((M, S))
     for m in range(M):
+        # B = 3 for Delaunay
+        B = pix_size_for_sub_slim_index[m]
         for b in range(B):
             s = pix_indexes_for_sub_slim_index[m, b]
             w = pix_weights_for_sub_slim_index[m, b]
