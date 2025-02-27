@@ -159,7 +159,15 @@ class Data:
 
     @cached_property
     def mapping_matrix(self) -> np.ndarray[tuple[int, int], np.float64]:
-        return jax.mapping_matrix_from(self.pix_indexes_for_sub_slim_index, self.pix_weights_for_sub_slim_index, self.S)
+        return original.mapping_matrix_from(
+            self.pix_indexes_for_sub_slim_index,
+            self.pix_size_for_sub_slim_index,
+            self.pix_weights_for_sub_slim_index,
+            self.S,
+            self.M,
+            self.slim_index_for_sub_slim_index,
+            self.sub_fraction,
+        )
 
     @property
     def dirty_image(self) -> np.ndarray[tuple[int], np.float64]:
