@@ -20,6 +20,7 @@ tests_generated: list[str] = [
     "w_tilde_curvature_interferometer_from",
     # "w_tilde_curvature_preload_interferometer_from",
     "w_tilde_via_preload_from",
+    "mapping_matrix_from",
     "data_vector_from",
     "curvature_matrix_via_w_tilde_from",
     # "curvature_matrix_via_w_tilde_curvature_preload_interferometer_from",
@@ -41,6 +42,7 @@ tests_all: list[str] = [
     "w_tilde_curvature_interferometer_from",
     "w_tilde_curvature_preload_interferometer_from",
     "w_tilde_via_preload_from",
+    "mapping_matrix_from",
     "data_vector_from",
     "curvature_matrix_via_w_tilde_from",
     "curvature_matrix_via_w_tilde_curvature_preload_interferometer_from",
@@ -75,6 +77,8 @@ class Data:
             "shape_native": self.shape_native,
             "shape_masked_pixels_2d": self.shape_masked_pixels_2d,
             "pixel_scales": self.pixel_scales,
+            "pixels": self.S,
+            "total_mask_pixels": self.M,
             "centre": self.centre,
             "mapping_matrix": self.mapping_matrix,
             "dirty_image": self.dirty_image,
@@ -624,63 +628,6 @@ class TestLogLikelihood:
 
         res = benchmark(run)
         np.testing.assert_allclose(res, ref_dict["log_likelihood_function"], rtol=2e-6)
-
-
-class TestMappingMatrix:
-
-    @pytest.mark.benchmark
-    def test_mapping_matrix_from_original(self, data_bundle, benchmark):
-        data, ref = data_bundle
-        benchmark.group = f"mapping_matrix_from_{type(data).__name__}"
-
-        data_dict = data.dict() | {"pixels": data.S, "total_mask_pixels": data.M}
-        ref.ref
-        func = original.mapping_matrix_from
-        sig = inspect.signature(func)
-        args = [data_dict[key] for key in sig.parameters]
-
-        def run():
-            return func(*args)
-
-        res = benchmark(run)
-        np.testing.assert_allclose(res, data_dict["mapping_matrix"], rtol=2e-6)
-
-    @pytest.mark.benchmark
-    def test_mapping_matrix_from_numba(self, data_bundle, benchmark):
-        data, ref = data_bundle
-        benchmark.group = f"mapping_matrix_from_{type(data).__name__}"
-
-        data_dict = data.dict() | {"pixels": data.S}
-        ref.ref
-        func = numba.mapping_matrix_from
-        sig = inspect.signature(func)
-        args = [data_dict[key] for key in sig.parameters]
-
-        def run():
-            return func(*args)
-
-        res = benchmark(run)
-        np.testing.assert_allclose(res, data_dict["mapping_matrix"], rtol=2e-6)
-
-    @pytest.mark.benchmark
-    def test_mapping_matrix_from_jax(self, data_bundle, benchmark):
-        data, ref = data_bundle
-        benchmark.group = f"mapping_matrix_from_{type(data).__name__}"
-
-        data_dict = data.dict() | {"pixels": data.S}
-        ref.ref
-        func = jax.mapping_matrix_from
-        sig = inspect.signature(func)
-        args = [
-            jnp.array(data_dict[key]) if isinstance(data_dict[key], np.ndarray) else data_dict[key]
-            for key in sig.parameters
-        ]
-
-        def run():
-            return func(*args).block_until_ready()
-
-        res = benchmark(run)
-        np.testing.assert_allclose(res, data_dict["mapping_matrix"], rtol=2e-6)
 
 
 class TestWTilde:
