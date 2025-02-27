@@ -442,7 +442,7 @@ def mapping_matrix_from(
     return (
         jnp.zeros((M, S))
         .at[I_IDX, pix_indexes_for_sub_slim_index.flatten()]
-        .add(pix_weights_for_sub_slim_index.flatten())
+        .set(pix_weights_for_sub_slim_index.flatten())
     )
 
 

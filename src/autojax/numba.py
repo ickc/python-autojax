@@ -367,7 +367,7 @@ def mapping_matrix_from(
         for b in range(B):
             s = pix_indexes_for_sub_slim_index[m, b]
             w = pix_weights_for_sub_slim_index[m, b]
-            mapping_matrix[m, s] += w
+            mapping_matrix[m, s] = w
     return mapping_matrix
 
 
