@@ -10,7 +10,6 @@ import numpy as np
 import pytest
 from jax import numpy as jnp
 from jax.experimental import sparse
-from numba import jit
 
 from autojax import jax, numba, original
 
@@ -67,6 +66,7 @@ class Data:
     _centre: float = 0.0
     N_: int = 30
     coefficient: float = 1.0
+    B: int = 3  # Delaunay
 
     def dict(self) -> dict:
         return {
@@ -96,6 +96,8 @@ class Data:
             "noise_map": self.noise_map,
             "noise_map_real": self.noise_map_real,
             "curvature_reg_matrix": self.curvature_reg_matrix,
+            "pix_indexes_for_sub_slim_index": self.pix_indexes_for_sub_slim_index,
+            "pix_weights_for_sub_slim_index": self.pix_weights_for_sub_slim_index,
         }
 
     @property
@@ -150,9 +152,11 @@ class Data:
         """Get the centre of the native grid."""
         return self._centre, self._centre
 
-    @property
+    @cached_property
     def mapping_matrix(self) -> np.ndarray[tuple[int, int], np.float64]:
-        raise NotImplementedError
+        return numba.mapping_matrix_from(
+            self.pix_indexes_for_sub_slim_index, self.pix_weights_for_sub_slim_index, self.S
+        )
 
     @property
     def dirty_image(self) -> np.ndarray[tuple[int], np.float64]:
@@ -307,14 +311,12 @@ class DataLoaded(Data):
         return res | {
             "pix_pixels": self.pix_pixels,
             "shape_masked_pixels_2d": self.shape_masked_pixels_2d,
-            "pix_indexes_for_sub_slim_index": self.pix_indexes_for_sub_slim_index,
             "pix_size_for_sub_slim_index": self.pix_size_for_sub_slim_index,
-            "pix_weights_for_sub_slim_index": self.pix_weights_for_sub_slim_index,
         }
 
     @property
     def M(self) -> int:
-        return self.mapping_matrix.shape[0]
+        return self.pix_indexes_for_sub_slim_index.shape[0]
 
     @property
     def K(self) -> int:
@@ -326,7 +328,7 @@ class DataLoaded(Data):
 
     @property
     def S(self) -> int:
-        return self.mapping_matrix.shape[1]
+        return self.neighbors_sizes.size
 
     @property
     def dirty_image(self):
@@ -343,10 +345,6 @@ class DataLoaded(Data):
     @property
     def uv_wavelengths(self):
         return self._data["uv_wavelengths"]
-
-    @property
-    def mapping_matrix(self):
-        return self._data["mapping_matrix"]
 
     @property
     def neighbors(self):
@@ -389,27 +387,6 @@ class DataGenerated(Data):
     def S(self) -> int:
         return self.S_
 
-    @staticmethod
-    @jit("float64[:, :](int64, int64)", nopython=True, nogil=True, parallel=False)
-    def _gen_mapping_matrix(M: int, S: int) -> np.ndarray[tuple[int, int], np.float64]:
-        """Generate a mapping matrix."""
-        mapping_matrix = np.zeros((M, S))
-        # make up some sparse mapping matrix, non-zero values are close to the scaled diagonal
-        R = max(0.0018521191598264723, 2.0 * np.abs(1.0 / M - 1.0 / S))
-        for i in range(M):
-            for j in range(S):
-                r = np.abs((i + 1) / M - (j + 1) / S)
-                if r < R:
-                    mapping_matrix[i, j] = R - r
-        # normalize
-        mapping_matrix /= mapping_matrix.sum(axis=1).reshape(-1, 1)
-        return mapping_matrix
-
-    @cached_property
-    def mapping_matrix(self) -> np.ndarray[tuple[int, int], np.float64]:
-        """Generate a mapping matrix."""
-        return self._gen_mapping_matrix(self.M, self.S)
-
     # random
     @cached_property
     def dirty_image(self) -> np.ndarray[tuple[int], np.float64]:
@@ -425,9 +402,34 @@ class DataGenerated(Data):
         rng = np.random.default_rng(deterministic_seed("uv_wavelengths", K, 2))
         return rng.random((K, 2))
 
-    # def pix_indexes_for_sub_slim_index
+    @cached_property
+    def pix_indexes_for_sub_slim_index(self) -> np.ndarray[tuple[int, int], np.int64]:
+        M = self.M
+        S = self.S
+        B = self.B
+        res = np.empty((M, B), dtype=int)
+        for m in range(M):
+            # 0 <= s_low < S
+            s_low = m * S // M
+            s_high = s_low + B
+            # ensure not out of bounds
+            if s_high > S:
+                s_high = S
+                s_low = s_high - B
+            res[m, :] = np.arange(s_low, s_high)
+        return res
+
     # def pix_size_for_sub_slim_index
-    # def pix_weights_for_sub_slim_index
+
+    @cached_property
+    def pix_weights_for_sub_slim_index(self) -> np.ndarray[tuple[int, int], np.float64]:
+        M = self.M
+        S = self.S
+        B = self.B
+        rng = np.random.default_rng(deterministic_seed("pix_weights_for_sub_slim_index", M, S, B))
+        res = 0.01 + rng.random((M, B))
+        res /= res.sum(axis=1).reshape(-1, 1)
+        return res
 
     @cached_property
     def neighbors_sizes(self) -> np.ndarray[tuple[int], np.int64]:
@@ -660,7 +662,7 @@ class TestMappingMatrix:
             pytest.skip(f"Skip test_mapping_matrix_from_original from {type(data).__name__}")
         benchmark.group = f"mapping_matrix_from_{type(data).__name__}"
 
-        data_dict = data.dict() | {"pixels": data.S, "total_mask_pixels": data.M}
+        data_dict = data.dict() | {"pixels": data.S}
         ref.ref
         func = numba.mapping_matrix_from
         sig = inspect.signature(func)
