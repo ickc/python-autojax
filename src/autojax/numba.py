@@ -287,12 +287,11 @@ def w_tilde_via_preload_from(
     return w
 
 
-@jit("f8[:, ::1](i8[:, ::1], f8[:, ::1], i8, i8)", nopython=True, nogil=True, parallel=True)
+@jit("f8[:, ::1](i8[:, ::1], f8[:, ::1], i8)", nopython=True, nogil=True, parallel=True)
 def mapping_matrix_from(
     pix_indexes_for_sub_slim_index: np.ndarray[tuple[int, int], np.int64],
     pix_weights_for_sub_slim_index: np.ndarray[np.ndarray[tuple[int, int], np.float64]],
     pixels: int,
-    total_mask_pixels: int,
 ) -> np.ndarray[tuple[int, int], np.float64]:
     """
     Returns the mapping matrix, which is a matrix representing the mapping between every unmasked sub-pixel of the data
@@ -359,7 +358,7 @@ def mapping_matrix_from(
     total_mask_pixels
         The number of datas pixels in the observed datas and thus on the grid.
     """
-    M = total_mask_pixels
+    M = pix_indexes_for_sub_slim_index.shape[0]
     S = pixels
     B = pix_indexes_for_sub_slim_index.shape[1]
 
