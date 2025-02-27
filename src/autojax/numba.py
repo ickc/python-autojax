@@ -240,9 +240,9 @@ def w_tilde_via_compact_from(
     OFFSET = w_compact.shape[0] - 1
     w = np.empty((M, M))
     for i in range(M):
+        i_0 = native_index_for_slim_index[i, 0]
+        i_1 = native_index_for_slim_index[i, 1]
         for j in range(M):
-            i_0 = native_index_for_slim_index[i, 0]
-            i_1 = native_index_for_slim_index[i, 1]
             j_0 = native_index_for_slim_index[j, 0]
             j_1 = native_index_for_slim_index[j, 1]
             m = i_0 - j_0
@@ -442,6 +442,46 @@ def curvature_matrix_via_w_compact_from(
 ) -> np.ndarray[tuple[int, int], np.float64]:
     w_tilde = w_tilde_via_compact_from(w_compact, native_index_for_slim_index)
     return curvature_matrix_via_w_tilde_from(w_tilde, mapping_matrix)
+
+
+@jit(
+    "f8[:, ::1](f8[:, ::1], i8[:, ::1], i8[:, ::1], i8[::1], f8[:, ::1], i8)", nopython=True, nogil=True, parallel=False
+)
+def curvature_matrix_via_w_compact_sparse_mapping_matrix_from(
+    w_compact: np.ndarray[tuple[int, int], np.float64],
+    native_index_for_slim_index: np.ndarray[tuple[int, int], np.int64],
+    pix_indexes_for_sub_slim_index: np.ndarray[tuple[int, int], np.int64],
+    pix_size_for_sub_slim_index: np.ndarray[tuple[int], np.int64],
+    pix_weights_for_sub_slim_index: np.ndarray[np.ndarray[tuple[int, int], np.float64]],
+    pixels: int,
+) -> np.ndarray[tuple[int, int], np.float64]:
+    M = pix_indexes_for_sub_slim_index.shape[0]
+    S = pixels
+    OFFSET = w_compact.shape[0] - 1
+
+    F = np.zeros((S, S))
+    for m1 in range(M):
+        m1_0 = native_index_for_slim_index[m1, 0]
+        m1_1 = native_index_for_slim_index[m1, 1]
+        B1 = pix_size_for_sub_slim_index[m1]
+        for m2 in range(M):
+            m2_0 = native_index_for_slim_index[m2, 0]
+            m2_1 = native_index_for_slim_index[m2, 1]
+            B2 = pix_size_for_sub_slim_index[m2]
+
+            n1 = m1_0 - m2_0
+            # flip i, j if n1 < 0 as cos(-x) = cos(x)
+            n2 = (m1_1 - m2_1 if n1 >= 0 else m2_1 - m1_1) + OFFSET
+            w_m1_m2 = w_compact[np.abs(n1), n2]
+
+            for b1 in range(B1):
+                s1 = pix_indexes_for_sub_slim_index[m1, b1]
+                t_m1_s1 = pix_weights_for_sub_slim_index[m1, b1]
+                for b2 in range(B2):
+                    s2 = pix_indexes_for_sub_slim_index[m2, b2]
+                    t_m2_s2 = pix_weights_for_sub_slim_index[m2, b2]
+                    F[s1, s2] += t_m1_s1 * w_m1_m2 * t_m2_s2
+    return F
 
 
 @jit("f8[:, ::1](f8, i8[:, ::1], i8[::1])", nopython=True, nogil=True, parallel=False)
