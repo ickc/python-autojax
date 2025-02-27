@@ -653,6 +653,47 @@ class TestMappingMatrix:
         res = benchmark(run)
         np.testing.assert_allclose(res, data_dict["mapping_matrix"], rtol=2e-6)
 
+    @pytest.mark.benchmark
+    def test_mapping_matrix_from_numba(self, data_bundle, benchmark):
+        data, ref = data_bundle
+        if isinstance(data, DataGenerated):
+            pytest.skip(f"Skip test_mapping_matrix_from_original from {type(data).__name__}")
+        benchmark.group = f"mapping_matrix_from_{type(data).__name__}"
+
+        data_dict = data.dict() | {"pixels": data.S, "total_mask_pixels": data.M}
+        ref.ref
+        func = numba.mapping_matrix_from
+        sig = inspect.signature(func)
+        args = [data_dict[key] for key in sig.parameters]
+
+        def run():
+            return func(*args)
+
+        res = benchmark(run)
+        np.testing.assert_allclose(res, data_dict["mapping_matrix"], rtol=2e-6)
+
+    @pytest.mark.benchmark
+    def test_mapping_matrix_from_jax(self, data_bundle, benchmark):
+        data, ref = data_bundle
+        if isinstance(data, DataGenerated):
+            pytest.skip(f"Skip test_mapping_matrix_from_original from {type(data).__name__}")
+        benchmark.group = f"mapping_matrix_from_{type(data).__name__}"
+
+        data_dict = data.dict() | {"pixels": data.S}
+        ref.ref
+        func = jax.mapping_matrix_from
+        sig = inspect.signature(func)
+        args = [
+            jnp.array(data_dict[key]) if isinstance(data_dict[key], np.ndarray) else data_dict[key]
+            for key in sig.parameters
+        ]
+
+        def run():
+            return func(*args).block_until_ready()
+
+        res = benchmark(run)
+        np.testing.assert_allclose(res, data_dict["mapping_matrix"], rtol=2e-6)
+
 
 class TestWTilde:
     """Compute w_tilde via various methods.
