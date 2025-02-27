@@ -83,6 +83,8 @@ class Data:
             "grid_radians_2d": self.grid_radians_2d,
             "grid_radians_slim": self.grid_radians_slim,
             "native_index_for_slim_index": self.native_index_for_slim_index,
+            "slim_index_for_sub_slim_index": self.slim_index_for_sub_slim_index,
+            "sub_fraction": self.sub_fraction,
             "w_tilde": self.w_tilde,
             "w_tilde_preload": self.w_tilde_preload,
             "w_compact": self.w_compact,
@@ -167,6 +169,14 @@ class Data:
     @cached_property
     def native_index_for_slim_index(self) -> np.ndarray[tuple[int, int], np.int64]:
         return np.ascontiguousarray(np.argwhere(~self.real_space_mask))
+
+    @property
+    def slim_index_for_sub_slim_index(self) -> np.ndarray[tuple[int], np.int64]:
+        return np.arange(self.M)
+
+    @property
+    def sub_fraction(self) -> np.ndarray[tuple[int], np.float64]:
+        return np.ones(self.M)
 
     @cached_property
     def grid_radians_2d(self) -> np.ndarray[tuple[int, int, int], np.float64]:
@@ -620,6 +630,28 @@ class TestLogLikelihood:
 
         res = benchmark(run)
         np.testing.assert_allclose(res, ref_dict["log_likelihood_function"], rtol=2e-6)
+
+
+class TestMappingMatrix:
+
+    @pytest.mark.benchmark
+    def test_mapping_matrix_from_original(self, data_bundle, benchmark):
+        data, ref = data_bundle
+        if isinstance(data, DataGenerated):
+            pytest.skip(f"Skip test_mapping_matrix_from_original from {type(data).__name__}")
+        benchmark.group = f"mapping_matrix_from_{type(data).__name__}"
+
+        data_dict = data.dict() | {"pixels": data.S, "total_mask_pixels": data.M}
+        ref.ref
+        func = original.mapping_matrix_from
+        sig = inspect.signature(func)
+        args = [data_dict[key] for key in sig.parameters]
+
+        def run():
+            return func(*args)
+
+        res = benchmark(run)
+        np.testing.assert_allclose(res, data_dict["mapping_matrix"], rtol=2e-6)
 
 
 class TestWTilde:

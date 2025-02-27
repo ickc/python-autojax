@@ -449,6 +449,102 @@ def w_tilde_via_preload_from(
     return w_tilde_via_preload
 
 
+@jit("f8[:, ::1](i8[:, ::1], i8[::1], f8[:, ::1], i8, i8, i8[::1], f8[::1])", nopython=True, nogil=True, parallel=True)
+def mapping_matrix_from(
+    pix_indexes_for_sub_slim_index: np.ndarray[tuple[int, int], np.int64],
+    pix_size_for_sub_slim_index: np.ndarray[np.ndarray[tuple[int], np.int64]],
+    pix_weights_for_sub_slim_index: np.ndarray[np.ndarray[tuple[int, int], np.float64]],
+    pixels: int,
+    total_mask_pixels: int,
+    slim_index_for_sub_slim_index: np.ndarray[tuple[int], np.int64],
+    sub_fraction: np.ndarray[tuple[int], np.float64],
+) -> np.ndarray[tuple[int, int], np.float64]:
+    """
+    Returns the mapping matrix, which is a matrix representing the mapping between every unmasked sub-pixel of the data
+    and the pixels of a pixelization. Non-zero entries signify a mapping, whereas zeros signify no mapping.
+
+    For example, if the data has 5 unmasked pixels (with `sub_size=1` so there are not sub-pixels) and the pixelization
+    3 pixels, with the following mappings:
+
+    data pixel 0 -> pixelization pixel 0
+    data pixel 1 -> pixelization pixel 0
+    data pixel 2 -> pixelization pixel 1
+    data pixel 3 -> pixelization pixel 1
+    data pixel 4 -> pixelization pixel 2
+
+    The mapping matrix (which is of dimensions [data_pixels, pixelization_pixels]) would appear as follows:
+
+    [1, 0, 0] [0->0]
+    [1, 0, 0] [1->0]
+    [0, 1, 0] [2->1]
+    [0, 1, 0] [3->1]
+    [0, 0, 1] [4->2]
+
+    The mapping matrix is actually built using the sub-grid of the grid, whereby each pixel is divided into a grid of
+    sub-pixels which are all paired to pixels in the pixelization. The entries in the mapping matrix now become
+    fractional values dependent on the sub-pixel sizes.
+
+    For example, for a 2x2 sub-pixels in each pixel means the fractional value is 1.0/(2.0^2) = 0.25, if we have the
+    following mappings:
+
+    data pixel 0 -> data sub pixel 0 -> pixelization pixel 0
+    data pixel 0 -> data sub pixel 1 -> pixelization pixel 1
+    data pixel 0 -> data sub pixel 2 -> pixelization pixel 1
+    data pixel 0 -> data sub pixel 3 -> pixelization pixel 1
+    data pixel 1 -> data sub pixel 0 -> pixelization pixel 1
+    data pixel 1 -> data sub pixel 1 -> pixelization pixel 1
+    data pixel 1 -> data sub pixel 2 -> pixelization pixel 1
+    data pixel 1 -> data sub pixel 3 -> pixelization pixel 1
+    data pixel 2 -> data sub pixel 0 -> pixelization pixel 2
+    data pixel 2 -> data sub pixel 1 -> pixelization pixel 2
+    data pixel 2 -> data sub pixel 2 -> pixelization pixel 3
+    data pixel 2 -> data sub pixel 3 -> pixelization pixel 3
+
+    The mapping matrix (which is still of dimensions [data_pixels, pixelization_pixels]) appears as follows:
+
+    [0.25, 0.75, 0.0, 0.0] [1 sub-pixel maps to pixel 0, 3 map to pixel 1]
+    [ 0.0,  1.0, 0.0, 0.0] [All sub-pixels map to pixel 1]
+    [ 0.0,  0.0, 0.5, 0.5] [2 sub-pixels map to pixel 2, 2 map to pixel 3]
+
+    For certain pixelizations each data sub-pixel maps to multiple pixelization pixels in a weighted fashion, for
+    example a Delaunay pixelization where there are 3 mappings per sub-pixel whose weights are determined via a
+    nearest neighbor interpolation scheme.
+
+    In this case, each mapping value is multiplied by this interpolation weight (which are in the array
+    `pix_weights_for_sub_slim_index`) when the mapping matrix is constructed.
+
+    Parameters
+    ----------
+    pix_indexes_for_sub_slim_index : ndarray, shape (M, 3), dtype=int64
+        The mappings from a data sub-pixel index to a pixelization pixel index.
+    pix_size_for_sub_slim_index : ndarray, shape (M,), dtype=int64
+        The number of mappings between each data sub pixel and pixelization pixel.
+    pix_weights_for_sub_slim_index : ndarray, shape (M, 3), dtype=float64
+        The weights of the mappings of every data sub pixel and pixelization pixel.
+    pixels
+        The number of pixels in the pixelization.
+    total_mask_pixels
+        The number of datas pixels in the observed datas and thus on the grid.
+    slim_index_for_sub_slim_index : ndarray, shape (M,), dtype=int64
+        The mappings between the data's sub slimmed indexes and the slimmed indexes on the non sub-sized indexes.
+    sub_fraction : ndarray, shape (M,), dtype=float64
+        The fractional area each sub-pixel takes up in an pixel.
+    """
+
+    mapping_matrix = np.zeros((total_mask_pixels, pixels))
+
+    for sub_slim_index in range(slim_index_for_sub_slim_index.shape[0]):
+        slim_index = slim_index_for_sub_slim_index[sub_slim_index]
+
+        for pix_count in range(pix_size_for_sub_slim_index[sub_slim_index]):
+            pix_index = pix_indexes_for_sub_slim_index[sub_slim_index, pix_count]
+            pix_weight = pix_weights_for_sub_slim_index[sub_slim_index, pix_count]
+
+            mapping_matrix[slim_index][pix_index] += sub_fraction[slim_index] * pix_weight
+
+    return mapping_matrix
+
+
 def data_vector_from(mapping_matrix, dirty_image):
     """
     Parameters
