@@ -97,6 +97,7 @@ class Data:
             "noise_map_real": self.noise_map_real,
             "curvature_reg_matrix": self.curvature_reg_matrix,
             "pix_indexes_for_sub_slim_index": self.pix_indexes_for_sub_slim_index,
+            "pix_size_for_sub_slim_index": self.pix_size_for_sub_slim_index,
             "pix_weights_for_sub_slim_index": self.pix_weights_for_sub_slim_index,
         }
 
@@ -205,7 +206,7 @@ class Data:
 
     @property
     def pix_size_for_sub_slim_index(self) -> np.ndarray[tuple[int], np.int64]:
-        raise NotImplementedError
+        return np.full(self.M, self.B, dtype=np.int64)
 
     @property
     def pix_weights_for_sub_slim_index(self) -> np.ndarray[tuple[int, int], np.float64]:
@@ -311,7 +312,6 @@ class DataLoaded(Data):
         return res | {
             "pix_pixels": self.pix_pixels,
             "shape_masked_pixels_2d": self.shape_masked_pixels_2d,
-            "pix_size_for_sub_slim_index": self.pix_size_for_sub_slim_index,
         }
 
     @property
@@ -357,10 +357,6 @@ class DataLoaded(Data):
     @property
     def pix_indexes_for_sub_slim_index(self):
         return self._data["pix_indexes_for_sub_slim_index"]
-
-    @property
-    def pix_size_for_sub_slim_index(self):
-        return self._data["pix_size_for_sub_slim_index"]
 
     @property
     def pix_weights_for_sub_slim_index(self):
@@ -418,8 +414,6 @@ class DataGenerated(Data):
                 s_low = s_high - B
             res[m, :] = np.arange(s_low, s_high)
         return res
-
-    # def pix_size_for_sub_slim_index
 
     @cached_property
     def pix_weights_for_sub_slim_index(self) -> np.ndarray[tuple[int, int], np.float64]:
@@ -617,11 +611,9 @@ class TestLogLikelihood:
     @pytest.mark.benchmark
     def test_log_likelihood_function_via_preload_method_original(self, data_bundle, benchmark):
         data, ref = data_bundle
-        if isinstance(data, DataGenerated):
-            pytest.skip(f"Skip test_log_likelihood_function_via_preload_method_original from {type(data).__name__}")
         benchmark.group = f"log_likelihood_function_{type(data).__name__}"
 
-        data_dict = data.dict()
+        data_dict = data.dict() | {"pix_pixels": data.S}
         ref_dict = ref.ref
         func = original.log_likelihood_function_via_preload_method
         sig = inspect.signature(func)
@@ -639,8 +631,6 @@ class TestMappingMatrix:
     @pytest.mark.benchmark
     def test_mapping_matrix_from_original(self, data_bundle, benchmark):
         data, ref = data_bundle
-        if isinstance(data, DataGenerated):
-            pytest.skip(f"Skip test_mapping_matrix_from_original from {type(data).__name__}")
         benchmark.group = f"mapping_matrix_from_{type(data).__name__}"
 
         data_dict = data.dict() | {"pixels": data.S, "total_mask_pixels": data.M}
@@ -658,8 +648,6 @@ class TestMappingMatrix:
     @pytest.mark.benchmark
     def test_mapping_matrix_from_numba(self, data_bundle, benchmark):
         data, ref = data_bundle
-        if isinstance(data, DataGenerated):
-            pytest.skip(f"Skip test_mapping_matrix_from_original from {type(data).__name__}")
         benchmark.group = f"mapping_matrix_from_{type(data).__name__}"
 
         data_dict = data.dict() | {"pixels": data.S}
@@ -677,8 +665,6 @@ class TestMappingMatrix:
     @pytest.mark.benchmark
     def test_mapping_matrix_from_jax(self, data_bundle, benchmark):
         data, ref = data_bundle
-        if isinstance(data, DataGenerated):
-            pytest.skip(f"Skip test_mapping_matrix_from_original from {type(data).__name__}")
         benchmark.group = f"mapping_matrix_from_{type(data).__name__}"
 
         data_dict = data.dict() | {"pixels": data.S}
@@ -904,9 +890,7 @@ class TestCurvatureMatrix:
     @pytest.mark.benchmark
     def test_curvature_matrix_preload_original(self, data_bundle, benchmark):
         data, ref = data_bundle
-        data_dict = data.dict()
-        if isinstance(data, DataGenerated):
-            pytest.skip(f"Skip test_curvature_matrix_preload_original from {type(data).__name__}")
+        data_dict = data.dict() | {"pix_pixels": data.S}
 
         test = "curvature_matrix"
         benchmark.group = f"{test}_{type(data).__name__}"

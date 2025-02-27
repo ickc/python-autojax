@@ -57,7 +57,6 @@ def external():
     neighbors_sizes = mapper.source_plane_mesh_grid.neighbors.sizes
 
     pix_indexes_for_sub_slim_index = mapper.pix_indexes_for_sub_slim_index
-    pix_size_for_sub_slim_index = mapper.pix_sizes_for_sub_slim_index
     pix_weights_for_sub_slim_index = mapper.pix_weights_for_sub_slim_index
     del dataset, mapper
     return (
@@ -69,7 +68,6 @@ def external():
         neighbors,
         neighbors_sizes,
         pix_indexes_for_sub_slim_index,
-        pix_size_for_sub_slim_index,
         pix_weights_for_sub_slim_index,
     )
 
