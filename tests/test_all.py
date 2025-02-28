@@ -923,7 +923,6 @@ class TestCurvatureMatrix:
         N = data.N
         native_index_for_slim_index = data_dict["native_index_for_slim_index"]
         pix_indexes_for_sub_slim_index = data_dict["pix_indexes_for_sub_slim_index"]
-        pix_size_for_sub_slim_index = data_dict["pix_size_for_sub_slim_index"]
         pix_weights_for_sub_slim_index = data_dict["pix_weights_for_sub_slim_index"]
         pixels = data.S
         pixel_scale = data.pixel_scale
@@ -939,7 +938,6 @@ class TestCurvatureMatrix:
                 w_compact,
                 native_index_for_slim_index,
                 pix_indexes_for_sub_slim_index,
-                pix_size_for_sub_slim_index,
                 pix_weights_for_sub_slim_index,
                 pixels,
             )
@@ -961,7 +959,6 @@ class TestCurvatureMatrix:
         N = data.N
         native_index_for_slim_index = data_dict["native_index_for_slim_index"]
         pix_indexes_for_sub_slim_index = data_dict["pix_indexes_for_sub_slim_index"]
-        pix_size_for_sub_slim_index = data_dict["pix_size_for_sub_slim_index"]
         pix_weights_for_sub_slim_index = data_dict["pix_weights_for_sub_slim_index"]
         pixels = data.S
         pixel_scale = data.pixel_scale
@@ -977,7 +974,6 @@ class TestCurvatureMatrix:
                 w_compact,
                 native_index_for_slim_index,
                 pix_indexes_for_sub_slim_index,
-                pix_size_for_sub_slim_index,
                 pix_weights_for_sub_slim_index,
                 pixels,
             )

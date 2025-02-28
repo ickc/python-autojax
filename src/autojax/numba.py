@@ -291,10 +291,9 @@ def w_tilde_via_preload_from(
     return w
 
 
-@numba.jit("f8[:, ::1](i8[:, ::1], i8[::1], f8[:, ::1], i8)", nopython=True, nogil=True, parallel=True)
+@numba.jit("f8[:, ::1](i8[:, ::1], f8[:, ::1], i8)", nopython=True, nogil=True, parallel=True)
 def mapping_matrix_from(
     pix_indexes_for_sub_slim_index: np.ndarray[tuple[int, int], np.int64],
-    pix_size_for_sub_slim_index: np.ndarray[tuple[int], np.int64],
     pix_weights_for_sub_slim_index: np.ndarray[np.ndarray[tuple[int, int], np.float64]],
     pixels: int,
 ) -> np.ndarray[tuple[int, int], np.float64]:
@@ -356,8 +355,6 @@ def mapping_matrix_from(
     ----------
     pix_indexes_for_sub_slim_index : ndarray, shape (M, B), dtype=int64
         The mappings from a data sub-pixel index to a pixelization pixel index.
-    pix_size_for_sub_slim_index : ndarray, shape (M,), dtype=int64
-        The number of mappings between each data sub pixel and pixelization pixel.
     pix_weights_for_sub_slim_index : ndarray, shape (M, B), dtype=float64
         The weights of the mappings of every data sub pixel and pixelization pixel.
     pixels
@@ -365,15 +362,16 @@ def mapping_matrix_from(
     total_mask_pixels
         The number of datas pixels in the observed datas and thus on the grid.
     """
-    M = pix_indexes_for_sub_slim_index.shape[0]
+    # B = 3 for Delaunay
+    M, B = pix_indexes_for_sub_slim_index.shape
     S = pixels
 
     mapping_matrix = np.zeros((M, S))
     for m in range(M):
-        # B = 3 for Delaunay
-        B = pix_size_for_sub_slim_index[m]
         for b in range(B):
             s = pix_indexes_for_sub_slim_index[m, b]
+            if s == -1:
+                continue
             w = pix_weights_for_sub_slim_index[m, b]
             mapping_matrix[m, s] = w
     return mapping_matrix
@@ -448,14 +446,11 @@ def curvature_matrix_via_w_compact_from(
     return curvature_matrix_via_w_tilde_from(w_tilde, mapping_matrix)
 
 
-@numba.jit(
-    "f8[:, ::1](f8[:, ::1], i8[:, ::1], i8[:, ::1], i8[::1], f8[:, ::1], i8)", nopython=True, nogil=True, parallel=False
-)
+@numba.jit("f8[:, ::1](f8[:, ::1], i8[:, ::1], i8[:, ::1], f8[:, ::1], i8)", nopython=True, nogil=True, parallel=False)
 def curvature_matrix_via_w_compact_sparse_mapping_matrix_from(
     w_compact: np.ndarray[tuple[int, int], np.float64],
     native_index_for_slim_index: np.ndarray[tuple[int, int], np.int64],
     pix_indexes_for_sub_slim_index: np.ndarray[tuple[int, int], np.int64],
-    pix_size_for_sub_slim_index: np.ndarray[tuple[int], np.int64],
     pix_weights_for_sub_slim_index: np.ndarray[np.ndarray[tuple[int, int], np.float64]],
     pixels: int,
 ) -> np.ndarray[tuple[int, int], np.float64]:
@@ -467,14 +462,12 @@ def curvature_matrix_via_w_compact_sparse_mapping_matrix_from(
 
     FLOP cost: (4 + 3B^2) M^2, B = pix_size_for_sub_slim_index.mean(), B=3 for Delaunay.
     """
-    M: int = pix_indexes_for_sub_slim_index.shape[0]
+    M, B = pix_indexes_for_sub_slim_index.shape
     S: int = pixels
     OFFSET: int = w_compact.shape[0] - 1
 
     b1: int
-    B1: int
     b2: int
-    B2: int
     m1_0: int
     m1_1: int
     m2_0: int
@@ -491,35 +484,34 @@ def curvature_matrix_via_w_compact_sparse_mapping_matrix_from(
     for m1 in range(M):
         m1_0 = native_index_for_slim_index[m1, 0]
         m1_1 = native_index_for_slim_index[m1, 1]
-        B1 = pix_size_for_sub_slim_index[m1]
         for m2 in range(M):
             m2_0 = native_index_for_slim_index[m2, 0]
             m2_1 = native_index_for_slim_index[m2, 1]
-            B2 = pix_size_for_sub_slim_index[m2]
 
             n1 = m1_0 - m2_0
             # flip i, j if n1 < 0 as cos(-x) = cos(x)
             n2 = (m1_1 - m2_1 if n1 >= 0 else m2_1 - m1_1) + OFFSET
             w_m1_m2 = w_compact[np.abs(n1), n2]
 
-            for b1 in range(B1):
+            for b1 in range(B):
                 s1 = pix_indexes_for_sub_slim_index[m1, b1]
+                if s1 == -1:
+                    continue
                 t_m1_s1 = pix_weights_for_sub_slim_index[m1, b1]
-                for b2 in range(B2):
+                for b2 in range(B):
                     s2 = pix_indexes_for_sub_slim_index[m2, b2]
+                    if s2 == -1:
+                        continue
                     t_m2_s2 = pix_weights_for_sub_slim_index[m2, b2]
                     F[s1, s2] += t_m1_s1 * w_m1_m2 * t_m2_s2
     return F
 
 
-@numba.jit(
-    "f8[:, ::1](f8[:, ::1], i8[:, ::1], i8[:, ::1], i8[::1], f8[:, ::1], i8)", nopython=True, nogil=True, parallel=False
-)
+@numba.jit("f8[:, ::1](f8[:, ::1], i8[:, ::1], i8[:, ::1], f8[:, ::1], i8)", nopython=True, nogil=True, parallel=False)
 def w_tilde_matmul_mapping_matrix_via_compact_sparse_from(
     w_compact: np.ndarray[tuple[int, int], np.float64],
     native_index_for_slim_index: np.ndarray[tuple[int, int], np.int64],
     pix_indexes_for_sub_slim_index: np.ndarray[tuple[int, int], np.int64],
-    pix_size_for_sub_slim_index: np.ndarray[tuple[int], np.int64],
     pix_weights_for_sub_slim_index: np.ndarray[np.ndarray[tuple[int, int], np.float64]],
     pixels: int,
 ) -> np.ndarray[tuple[int, int], np.float64]:
@@ -531,12 +523,11 @@ def w_tilde_matmul_mapping_matrix_via_compact_sparse_from(
 
     FLOP cost: 2(2 + B)M^2, B = pix_size_for_sub_slim_index.mean(), B=3 for Delaunay.
     """
-    M: int = pix_indexes_for_sub_slim_index.shape[0]
+    M, B = pix_indexes_for_sub_slim_index.shape
     S: int = pixels
     OFFSET: int = w_compact.shape[0] - 1
 
     b2: int
-    B2: int
     m1_0: int
     m1_1: int
     m2_0: int
@@ -554,25 +545,25 @@ def w_tilde_matmul_mapping_matrix_via_compact_sparse_from(
         for m2 in range(M):
             m2_0 = native_index_for_slim_index[m2, 0]
             m2_1 = native_index_for_slim_index[m2, 1]
-            B2 = pix_size_for_sub_slim_index[m2]
 
             n1 = m1_0 - m2_0
             # flip i, j if n1 < 0 as cos(-x) = cos(x)
             n2 = (m1_1 - m2_1 if n1 >= 0 else m2_1 - m1_1) + OFFSET
             w_m1_m2 = w_compact[np.abs(n1), n2]
 
-            for b2 in range(B2):
+            for b2 in range(B):
                 s2 = pix_indexes_for_sub_slim_index[m2, b2]
+                if s2 == -1:
+                    continue
                 t_m2_s2 = pix_weights_for_sub_slim_index[m2, b2]
                 Ω[m1, s2] += w_m1_m2 * t_m2_s2
     return Ω
 
 
-@numba.jit("f8[:, ::1](f8[:, ::1], i8[:, ::1], i8[::1], f8[:, ::1], i8)", nopython=True, nogil=True, parallel=False)
+@numba.jit("f8[:, ::1](f8[:, ::1], i8[:, ::1], f8[:, ::1], i8)", nopython=True, nogil=True, parallel=False)
 def sparse_mapping_matrix_transpose_matmul_matrix_from(
     matrix: np.ndarray[tuple[int, int], np.float64],
     pix_indexes_for_sub_slim_index: np.ndarray[tuple[int, int], np.int64],
-    pix_size_for_sub_slim_index: np.ndarray[tuple[int], np.int64],
     pix_weights_for_sub_slim_index: np.ndarray[np.ndarray[tuple[int, int], np.float64]],
     pixels: int,
 ) -> np.ndarray[tuple[int, int], np.float64]:
@@ -586,10 +577,10 @@ def sparse_mapping_matrix_transpose_matmul_matrix_from(
     """
     Ω = matrix
     M, S2 = Ω.shape
+    B = pix_indexes_for_sub_slim_index.shape[1]
     S1: int = pixels
 
     b1: int
-    B1: int
     m: int
     s1: int
     s2: int
@@ -597,23 +588,21 @@ def sparse_mapping_matrix_transpose_matmul_matrix_from(
 
     F = np.zeros((S1, S2))
     for m in range(M):
-        B1 = pix_size_for_sub_slim_index[m]
-        for b1 in range(B1):
+        for b1 in range(B):
             s1 = pix_indexes_for_sub_slim_index[m, b1]
+            if s1 == -1:
+                continue
             t_m_s1 = pix_weights_for_sub_slim_index[m, b1]
             for s2 in range(S2):
                 F[s1, s2] += t_m_s1 * Ω[m, s2]
     return F
 
 
-@numba.jit(
-    "f8[:, ::1](f8[:, ::1], i8[:, ::1], i8[:, ::1], i8[::1], f8[:, ::1], i8)", nopython=True, nogil=True, parallel=False
-)
+@numba.jit("f8[:, ::1](f8[:, ::1], i8[:, ::1], i8[:, ::1], f8[:, ::1], i8)", nopython=True, nogil=True, parallel=False)
 def curvature_matrix_via_w_compact_sparse_mapping_matrix_in_2matmul_from(
     w_compact: np.ndarray[tuple[int, int], np.float64],
     native_index_for_slim_index: np.ndarray[tuple[int, int], np.int64],
     pix_indexes_for_sub_slim_index: np.ndarray[tuple[int, int], np.int64],
-    pix_size_for_sub_slim_index: np.ndarray[tuple[int], np.int64],
     pix_weights_for_sub_slim_index: np.ndarray[np.ndarray[tuple[int, int], np.float64]],
     pixels: int,
 ) -> np.ndarray[tuple[int, int], np.float64]:
@@ -633,12 +622,10 @@ def curvature_matrix_via_w_compact_sparse_mapping_matrix_in_2matmul_from(
             w_compact,
             native_index_for_slim_index,
             pix_indexes_for_sub_slim_index,
-            pix_size_for_sub_slim_index,
             pix_weights_for_sub_slim_index,
             pixels,
         ),
         pix_indexes_for_sub_slim_index,
-        pix_size_for_sub_slim_index,
         pix_weights_for_sub_slim_index,
         pixels,
     )
@@ -673,13 +660,16 @@ def constant_regularization_matrix_from(
         The regularization matrix computed using Regularization where the effective regularization
         coefficient of every source pixel is the same.
     """
-    S = neighbors_sizes.size
+    S, P = neighbors.shape
     regularization_coefficient = coefficient * coefficient
 
     regularization_matrix = np.diag(1e-8 + regularization_coefficient * neighbors_sizes)
     for i in range(S):
-        for j in range(neighbors_sizes[i]):
-            regularization_matrix[i, neighbors[i, j]] -= regularization_coefficient
+        for j in range(P):
+            k = neighbors[i, j]
+            if k == -1:
+                continue
+            regularization_matrix[i, k] -= regularization_coefficient
     return regularization_matrix
 
 
