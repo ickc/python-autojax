@@ -455,9 +455,33 @@ def curvature_matrix_via_w_compact_sparse_mapping_matrix_from(
     pix_weights_for_sub_slim_index: np.ndarray[np.ndarray[tuple[int, int], np.float64]],
     pixels: int,
 ) -> np.ndarray[tuple[int, int], np.float64]:
-    M = pix_indexes_for_sub_slim_index.shape[0]
-    S = pixels
-    OFFSET = w_compact.shape[0] - 1
+    """Calculate the curvature matrix using the compact w_tilde matrix and the sparse mapping matrix.
+
+    This calculates it directly without expanding anything in memory. It optimizes for low memory usage but requires more FLOPS.
+
+    Mxemory cost: S^2 <- the output matrix size, i.e. no extra memory is used.
+
+    FLOP cost: (4 + 3B^2) M^2, B = pix_size_for_sub_slim_index.mean(), B=3 for Delaunay.
+    """
+    M: int = pix_indexes_for_sub_slim_index.shape[0]
+    S: int = pixels
+    OFFSET: int = w_compact.shape[0] - 1
+
+    b1: int
+    B1: int
+    b2: int
+    B2: int
+    m1_0: int
+    m1_1: int
+    m2_0: int
+    m2_1: int
+    n1: int
+    n2: int
+    s1: int
+    s2: int
+    t_m1_s1: float
+    t_m2_s2: float
+    w_m1_m2: float
 
     F = np.zeros((S, S))
     for m1 in range(M):
