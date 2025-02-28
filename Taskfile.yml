@@ -5,3 +5,7 @@ tasks:
     desc: "Export a conda environment file."
     cmds:
       - pixi project export conda-environment environment.yml
+  diff:
+    desc: "Show differences between modules."
+    cmds:
+      - pixi run python util/mod_diff.py
