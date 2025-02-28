@@ -459,7 +459,7 @@ def curvature_matrix_via_w_compact_sparse_mapping_matrix_from(
 
     This calculates it directly without expanding anything in memory. It optimizes for low memory usage but requires more FLOPS.
 
-    Mxemory cost: S^2 <- the output matrix size, i.e. no extra memory is used.
+    Memory cost: S^2 <- the output matrix size, i.e. no extra memory is used.
 
     FLOP cost: (4 + 3B^2) M^2, B = pix_size_for_sub_slim_index.mean(), B=3 for Delaunay.
     """
@@ -506,6 +506,138 @@ def curvature_matrix_via_w_compact_sparse_mapping_matrix_from(
                     t_m2_s2 = pix_weights_for_sub_slim_index[m2, b2]
                     F[s1, s2] += t_m1_s1 * w_m1_m2 * t_m2_s2
     return F
+
+
+@jit(
+    "f8[:, ::1](f8[:, ::1], i8[:, ::1], i8[:, ::1], i8[::1], f8[:, ::1], i8)", nopython=True, nogil=True, parallel=False
+)
+def w_tilde_matmul_mapping_matrix_via_compact_sparse_from(
+    w_compact: np.ndarray[tuple[int, int], np.float64],
+    native_index_for_slim_index: np.ndarray[tuple[int, int], np.int64],
+    pix_indexes_for_sub_slim_index: np.ndarray[tuple[int, int], np.int64],
+    pix_size_for_sub_slim_index: np.ndarray[tuple[int], np.int64],
+    pix_weights_for_sub_slim_index: np.ndarray[np.ndarray[tuple[int, int], np.float64]],
+    pixels: int,
+) -> np.ndarray[tuple[int, int], np.float64]:
+    """Calculate w_tilde @ mapping_matrix using the compact w_tilde matrix and the sparse mapping matrix.
+
+    This expands w_tilde @ mapping_matrix as M by S dense matrix.
+
+    Memory cost: MS <- the output matrix size
+
+    FLOP cost: 2(2 + B)M^2, B = pix_size_for_sub_slim_index.mean(), B=3 for Delaunay.
+    """
+    M: int = pix_indexes_for_sub_slim_index.shape[0]
+    S: int = pixels
+    OFFSET: int = w_compact.shape[0] - 1
+
+    b2: int
+    B2: int
+    m1_0: int
+    m1_1: int
+    m2_0: int
+    m2_1: int
+    n1: int
+    n2: int
+    s2: int
+    t_m2_s2: float
+    w_m1_m2: float
+
+    Ω = np.zeros((M, S))
+    for m1 in range(M):
+        m1_0 = native_index_for_slim_index[m1, 0]
+        m1_1 = native_index_for_slim_index[m1, 1]
+        for m2 in range(M):
+            m2_0 = native_index_for_slim_index[m2, 0]
+            m2_1 = native_index_for_slim_index[m2, 1]
+            B2 = pix_size_for_sub_slim_index[m2]
+
+            n1 = m1_0 - m2_0
+            # flip i, j if n1 < 0 as cos(-x) = cos(x)
+            n2 = (m1_1 - m2_1 if n1 >= 0 else m2_1 - m1_1) + OFFSET
+            w_m1_m2 = w_compact[np.abs(n1), n2]
+
+            for b2 in range(B2):
+                s2 = pix_indexes_for_sub_slim_index[m2, b2]
+                t_m2_s2 = pix_weights_for_sub_slim_index[m2, b2]
+                Ω[m1, s2] += w_m1_m2 * t_m2_s2
+    return Ω
+
+
+@jit("f8[:, ::1](f8[:, ::1], i8[:, ::1], i8[::1], f8[:, ::1], i8)", nopython=True, nogil=True, parallel=False)
+def sparse_mapping_matrix_transpose_matmul_matrix_from(
+    matrix: np.ndarray[tuple[int, int], np.float64],
+    pix_indexes_for_sub_slim_index: np.ndarray[tuple[int, int], np.int64],
+    pix_size_for_sub_slim_index: np.ndarray[tuple[int], np.int64],
+    pix_weights_for_sub_slim_index: np.ndarray[np.ndarray[tuple[int, int], np.float64]],
+    pixels: int,
+) -> np.ndarray[tuple[int, int], np.float64]:
+    """Calculate T^T @ matrix using the sparse mapping matrix representation.
+
+    Assuming matrix is M by S2,
+
+    Memory cost: S1 S2 <- the output matrix size (no extra memory is used).
+
+    FLOP cost: 2B S1 S2, B = pix_size_for_sub_slim_index.mean(), B=3 for Delaunay.
+    """
+    Ω = matrix
+    M, S2 = Ω.shape
+    S1: int = pixels
+
+    b1: int
+    B1: int
+    m: int
+    s1: int
+    s2: int
+    t_m_s1: float
+
+    F = np.zeros((S1, S2))
+    for m in range(M):
+        B1 = pix_size_for_sub_slim_index[m]
+        for b1 in range(B1):
+            s1 = pix_indexes_for_sub_slim_index[m, b1]
+            t_m_s1 = pix_weights_for_sub_slim_index[m, b1]
+            for s2 in range(S2):
+                F[s1, s2] += t_m_s1 * Ω[m, s2]
+    return F
+
+
+@jit(
+    "f8[:, ::1](f8[:, ::1], i8[:, ::1], i8[:, ::1], i8[::1], f8[:, ::1], i8)", nopython=True, nogil=True, parallel=False
+)
+def curvature_matrix_via_w_compact_sparse_mapping_matrix_in_2matmul_from(
+    w_compact: np.ndarray[tuple[int, int], np.float64],
+    native_index_for_slim_index: np.ndarray[tuple[int, int], np.int64],
+    pix_indexes_for_sub_slim_index: np.ndarray[tuple[int, int], np.int64],
+    pix_size_for_sub_slim_index: np.ndarray[tuple[int], np.int64],
+    pix_weights_for_sub_slim_index: np.ndarray[np.ndarray[tuple[int, int], np.float64]],
+    pixels: int,
+) -> np.ndarray[tuple[int, int], np.float64]:
+    """Calculate the curvature matrix using the compact w_tilde matrix and the sparse mapping matrix.
+
+    This calculates T^T @ w_tilde @ T as two matrix multiplications, WT = w_tilde @ T and F = T^T @ WT.
+
+    This reduces FLOP requirements (by ~(4 + 3B^2)/(2(2 + B)) = 3.1-fold for Delaunay) at the cost of more memory usage by extra amount of MS.
+
+    Memory cost: MS + S^2
+
+    FLOP cost: 2(2 + B)M^2 + 2BS^2, B = pix_size_for_sub_slim_index.mean(), B=3 for Delaunay.
+
+    """
+    return sparse_mapping_matrix_transpose_matmul_matrix_from(
+        w_tilde_matmul_mapping_matrix_via_compact_sparse_from(
+            w_compact,
+            native_index_for_slim_index,
+            pix_indexes_for_sub_slim_index,
+            pix_size_for_sub_slim_index,
+            pix_weights_for_sub_slim_index,
+            pixels,
+        ),
+        pix_indexes_for_sub_slim_index,
+        pix_size_for_sub_slim_index,
+        pix_weights_for_sub_slim_index,
+        pixels,
+    )
 
 
 @jit("f8[:, ::1](f8, i8[:, ::1], i8[::1])", nopython=True, nogil=True, parallel=False)

@@ -949,6 +949,44 @@ class TestCurvatureMatrix:
         np.testing.assert_allclose(res, ref.ref["curvature_matrix_via_w_tilde_from"])
 
     @pytest.mark.benchmark
+    def test_curvature_matrix_compact_sparse_mapping_matrix_in_2matmul_numba(self, data_bundle, benchmark):
+        data, ref = data_bundle
+        data_dict = data.dict()
+
+        test = "curvature_matrix"
+        benchmark.group = f"{test}_{type(data).__name__}"
+
+        noise_map_real = data_dict["noise_map_real"]
+        uv_wavelengths = data_dict["uv_wavelengths"]
+        N = data.N
+        native_index_for_slim_index = data_dict["native_index_for_slim_index"]
+        pix_indexes_for_sub_slim_index = data_dict["pix_indexes_for_sub_slim_index"]
+        pix_size_for_sub_slim_index = data_dict["pix_size_for_sub_slim_index"]
+        pix_weights_for_sub_slim_index = data_dict["pix_weights_for_sub_slim_index"]
+        pixels = data.S
+        pixel_scale = data.pixel_scale
+
+        def run():
+            w_compact = numba.w_tilde_curvature_compact_interferometer_from(
+                N,
+                noise_map_real,
+                uv_wavelengths,
+                pixel_scale,
+            )
+            curvature_matrix = numba.curvature_matrix_via_w_compact_sparse_mapping_matrix_in_2matmul_from(
+                w_compact,
+                native_index_for_slim_index,
+                pix_indexes_for_sub_slim_index,
+                pix_size_for_sub_slim_index,
+                pix_weights_for_sub_slim_index,
+                pixels,
+            )
+            return curvature_matrix
+
+        res = benchmark(run)
+        np.testing.assert_allclose(res, ref.ref["curvature_matrix_via_w_tilde_from"])
+
+    @pytest.mark.benchmark
     def test_curvature_matrix_compact_jax(self, data_bundle, benchmark):
         data, ref = data_bundle
         data_dict = data.dict()
