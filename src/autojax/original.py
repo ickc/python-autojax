@@ -1,10 +1,10 @@
 from __future__ import annotations
 
+import numba
 import numpy as np
-from numba import jit
 
 
-@jit(nopython=True, nogil=True, parallel=False)
+@numba.jit(nopython=True, nogil=True, parallel=False)
 def mask_2d_centres_from(
     shape_native: tuple[int, int],
     pixel_scales: tuple[float, float],
@@ -39,7 +39,7 @@ def mask_2d_centres_from(
     return (y_centre_scaled, x_centre_scaled)
 
 
-@jit(nopython=True, nogil=True, parallel=False)
+@numba.jit(nopython=True, nogil=True, parallel=False)
 def mask_2d_circular_from(
     shape_native: tuple[int, int],
     pixel_scales: tuple[float, float],
@@ -94,7 +94,7 @@ def mask_2d_circular_from(
     return mask_2d
 
 
-@jit(nopython=True, nogil=True, parallel=True)
+@numba.jit(nopython=True, nogil=True, parallel=True)
 def w_tilde_data_interferometer_from(
     visibilities_real: np.ndarray,
     noise_map_real: np.ndarray,
@@ -162,7 +162,7 @@ def w_tilde_data_interferometer_from(
     return w_tilde_data
 
 
-@jit(nopython=True, nogil=True, parallel=True)
+@numba.jit(nopython=True, nogil=True, parallel=True)
 def w_tilde_curvature_interferometer_from(
     noise_map_real: np.ndarray,
     uv_wavelengths: np.ndarray,
@@ -226,7 +226,7 @@ def w_tilde_curvature_interferometer_from(
     return w_tilde
 
 
-@jit(nopython=True, nogil=True, parallel=True)
+@numba.jit(nopython=True, nogil=True, parallel=True)
 def w_tilde_curvature_preload_interferometer_from(
     noise_map_real: np.ndarray[tuple[int], np.float64],
     uv_wavelengths: np.ndarray[tuple[int, int], np.float64],
@@ -403,7 +403,7 @@ def w_tilde_curvature_preload_interferometer_from(
     return curvature_preload
 
 
-@jit(nopython=True, nogil=True, parallel=True)
+@numba.jit(nopython=True, nogil=True, parallel=True)
 def w_tilde_via_preload_from(
     w_tilde_preload: np.ndarray[tuple[int, int], np.float64],
     native_index_for_slim_index: np.ndarray[tuple[int, int], np.int64],
@@ -449,7 +449,7 @@ def w_tilde_via_preload_from(
     return w_tilde_via_preload
 
 
-@jit("f8[:, ::1](i8[:, ::1], i8[::1], f8[:, ::1], i8, i8, i8[::1], f8[::1])", nopython=True, nogil=True, parallel=True)
+@numba.jit(nopython=True, nogil=True, parallel=True)
 def mapping_matrix_from(
     pix_indexes_for_sub_slim_index: np.ndarray[tuple[int, int], np.int64],
     pix_size_for_sub_slim_index: np.ndarray[np.ndarray[tuple[int], np.int64]],
@@ -596,7 +596,7 @@ def curvature_matrix_via_w_tilde_from(w_tilde: np.ndarray, mapping_matrix: np.nd
     return np.dot(mapping_matrix.T, np.dot(w_tilde, mapping_matrix))
 
 
-@jit(nopython=True, nogil=True, parallel=True)
+@numba.jit(nopython=True, nogil=True, parallel=True)
 def curvature_matrix_via_w_tilde_curvature_preload_interferometer_from(
     curvature_preload: np.ndarray[tuple[int, int], np.float64],
     pix_indexes_for_sub_slim_index: np.ndarray[tuple[int, int], np.int64],
