@@ -1,13 +1,15 @@
 from __future__ import annotations
 
+import numba
 import numpy as np
-from numba import jit, prange
 
 TWO_PI = 2.0 * np.pi
 LOG_TWO_PI = np.log(TWO_PI)
 
 
-@jit("UniTuple(f8, 2)(UniTuple(i8, 2), UniTuple(f8, 2), UniTuple(f8, 2))", nopython=True, nogil=True, parallel=False)
+@numba.jit(
+    "UniTuple(f8, 2)(UniTuple(i8, 2), UniTuple(f8, 2), UniTuple(f8, 2))", nopython=True, nogil=True, parallel=False
+)
 def mask_2d_centres_from(
     shape_native: tuple[int, int],
     pixel_scales: tuple[float, float],
@@ -42,7 +44,9 @@ def mask_2d_centres_from(
     )
 
 
-@jit("b1[:, ::1](UniTuple(i8, 2), UniTuple(f8, 2), f8, UniTuple(f8, 2))", nopython=True, nogil=True, parallel=False)
+@numba.jit(
+    "b1[:, ::1](UniTuple(i8, 2), UniTuple(f8, 2), f8, UniTuple(f8, 2))", nopython=True, nogil=True, parallel=False
+)
 def mask_2d_circular_from(
     shape_native: tuple[int, int],
     pixel_scales: tuple[float, float],
@@ -82,7 +86,7 @@ def mask_2d_circular_from(
     )
 
 
-@jit(
+@numba.jit(
     "float64[::1](float64[::1], float64[::1], float64[:,::1], float64[:,::1], int64[:,::1])",
     nopython=True,
     nogil=True,
@@ -149,7 +153,7 @@ def w_tilde_data_interferometer_from(
     return res
 
 
-@jit("f8[:, ::1](f8[::1], f8[:, ::1], f8[:, ::1])", nopython=True, nogil=True, parallel=True)
+@numba.jit("f8[:, ::1](f8[::1], f8[:, ::1], f8[:, ::1])", nopython=True, nogil=True, parallel=True)
 def w_tilde_curvature_interferometer_from(
     noise_map_real: np.ndarray[tuple[int], np.float64],
     uv_wavelengths: np.ndarray[tuple[int, int], np.float64],
@@ -197,14 +201,14 @@ def w_tilde_curvature_interferometer_from(
     δg_2pi = g_2pi.reshape(-1, 1, 2) - g_2pi.reshape(1, -1, 2)
 
     w = np.zeros((M, M))
-    for k in prange(K):
+    for k in numba.prange(K):
         w += np.cos(δg_2pi[:, :, 1] * uv_wavelengths[k, 0] + δg_2pi[:, :, 0] * uv_wavelengths[k, 1]) * np.reciprocal(
             np.square(noise_map_real[k])
         )
     return w
 
 
-@jit("f8[:, ::1](i8, f8[::1], f8[:, ::1], f8)", nopython=True, nogil=True, parallel=True)
+@numba.jit("f8[:, ::1](i8, f8[::1], f8[:, ::1], f8)", nopython=True, nogil=True, parallel=True)
 def w_tilde_curvature_compact_interferometer_from(
     grid_size: int,
     noise_map_real: np.ndarray[tuple[int], np.float64],
@@ -224,14 +228,14 @@ def w_tilde_curvature_compact_interferometer_from(
     δ_mn1 = TWOPI_D * (np.arange(N_DIFF, dtype=np.float64) - OFFSET)
 
     w_compact = np.zeros((N, N_DIFF))
-    for k in prange(K):
+    for k in numba.prange(K):
         w_compact += np.cos(δ_mn1 * uv_wavelengths[k, 0] - δ_mn0 * uv_wavelengths[k, 1]) * np.square(
             np.reciprocal(noise_map_real[k])
         )
     return w_compact
 
 
-@jit("f8[:, ::1](f8[:, ::1], i8[:, ::1])", nopython=True, nogil=True, parallel=False)
+@numba.jit("f8[:, ::1](f8[:, ::1], i8[:, ::1])", nopython=True, nogil=True, parallel=False)
 def w_tilde_via_compact_from(
     w_compact: np.ndarray[tuple[int, int], np.float64],
     native_index_for_slim_index: np.ndarray[tuple[int, int], np.int64],
@@ -252,7 +256,7 @@ def w_tilde_via_compact_from(
     return w
 
 
-@jit("f8[:, ::1](f8[:, ::1], i8[:, ::1])", nopython=True, nogil=True, parallel=False)
+@numba.jit("f8[:, ::1](f8[:, ::1], i8[:, ::1])", nopython=True, nogil=True, parallel=False)
 def w_tilde_via_preload_from(
     w_tilde_preload: np.ndarray[tuple[int, int], np.float64],
     native_index_for_slim_index: np.ndarray[tuple[int, int], np.int64],
@@ -287,7 +291,7 @@ def w_tilde_via_preload_from(
     return w
 
 
-@jit("f8[:, ::1](i8[:, ::1], i8[::1], f8[:, ::1], i8)", nopython=True, nogil=True, parallel=True)
+@numba.jit("f8[:, ::1](i8[:, ::1], i8[::1], f8[:, ::1], i8)", nopython=True, nogil=True, parallel=True)
 def mapping_matrix_from(
     pix_indexes_for_sub_slim_index: np.ndarray[tuple[int, int], np.int64],
     pix_size_for_sub_slim_index: np.ndarray[tuple[int], np.int64],
@@ -375,7 +379,7 @@ def mapping_matrix_from(
     return mapping_matrix
 
 
-@jit("f8[::1](f8[:, ::1], f8[::1])", nopython=True, nogil=True)
+@numba.jit("f8[::1](f8[:, ::1], f8[::1])", nopython=True, nogil=True)
 def data_vector_from(
     mapping_matrix: np.ndarray[tuple[int, int], np.float64],
     dirty_image: np.ndarray[tuple[int], np.float64],
@@ -405,7 +409,7 @@ def data_vector_from(
     return dirty_image @ mapping_matrix
 
 
-@jit("f8[:, ::1](f8[:, ::1], f8[:, ::1])", nopython=True, nogil=True)
+@numba.jit("f8[:, ::1](f8[:, ::1], f8[:, ::1])", nopython=True, nogil=True)
 def curvature_matrix_via_w_tilde_from(
     w_tilde: np.ndarray[tuple[int, int], np.float64],
     mapping_matrix: np.ndarray[tuple[int, int], np.float64],
@@ -434,7 +438,7 @@ def curvature_matrix_via_w_tilde_from(
     return mapping_matrix.T @ w_tilde @ mapping_matrix
 
 
-@jit("f8[:, ::1](f8[:, ::1], i8[:, ::1], f8[:, ::1])", nopython=True, nogil=True, parallel=False)
+@numba.jit("f8[:, ::1](f8[:, ::1], i8[:, ::1], f8[:, ::1])", nopython=True, nogil=True, parallel=False)
 def curvature_matrix_via_w_compact_from(
     w_compact: np.ndarray[tuple[int, int], np.float64],
     native_index_for_slim_index: np.ndarray[tuple[int, int], np.int64],
@@ -444,7 +448,7 @@ def curvature_matrix_via_w_compact_from(
     return curvature_matrix_via_w_tilde_from(w_tilde, mapping_matrix)
 
 
-@jit(
+@numba.jit(
     "f8[:, ::1](f8[:, ::1], i8[:, ::1], i8[:, ::1], i8[::1], f8[:, ::1], i8)", nopython=True, nogil=True, parallel=False
 )
 def curvature_matrix_via_w_compact_sparse_mapping_matrix_from(
@@ -508,7 +512,7 @@ def curvature_matrix_via_w_compact_sparse_mapping_matrix_from(
     return F
 
 
-@jit(
+@numba.jit(
     "f8[:, ::1](f8[:, ::1], i8[:, ::1], i8[:, ::1], i8[::1], f8[:, ::1], i8)", nopython=True, nogil=True, parallel=False
 )
 def w_tilde_matmul_mapping_matrix_via_compact_sparse_from(
@@ -564,7 +568,7 @@ def w_tilde_matmul_mapping_matrix_via_compact_sparse_from(
     return Ω
 
 
-@jit("f8[:, ::1](f8[:, ::1], i8[:, ::1], i8[::1], f8[:, ::1], i8)", nopython=True, nogil=True, parallel=False)
+@numba.jit("f8[:, ::1](f8[:, ::1], i8[:, ::1], i8[::1], f8[:, ::1], i8)", nopython=True, nogil=True, parallel=False)
 def sparse_mapping_matrix_transpose_matmul_matrix_from(
     matrix: np.ndarray[tuple[int, int], np.float64],
     pix_indexes_for_sub_slim_index: np.ndarray[tuple[int, int], np.int64],
@@ -602,7 +606,7 @@ def sparse_mapping_matrix_transpose_matmul_matrix_from(
     return F
 
 
-@jit(
+@numba.jit(
     "f8[:, ::1](f8[:, ::1], i8[:, ::1], i8[:, ::1], i8[::1], f8[:, ::1], i8)", nopython=True, nogil=True, parallel=False
 )
 def curvature_matrix_via_w_compact_sparse_mapping_matrix_in_2matmul_from(
@@ -640,7 +644,7 @@ def curvature_matrix_via_w_compact_sparse_mapping_matrix_in_2matmul_from(
     )
 
 
-@jit("f8[:, ::1](f8, i8[:, ::1], i8[::1])", nopython=True, nogil=True, parallel=False)
+@numba.jit("f8[:, ::1](f8, i8[:, ::1], i8[::1])", nopython=True, nogil=True, parallel=False)
 def constant_regularization_matrix_from(
     coefficient: float,
     neighbors: np.ndarray[[int, int], np.int64],
@@ -679,7 +683,7 @@ def constant_regularization_matrix_from(
     return regularization_matrix
 
 
-@jit("f8[::1](f8[::1], f8[:, ::1])", nopython=True, nogil=True)
+@numba.jit("f8[::1](f8[::1], f8[:, ::1])", nopython=True, nogil=True)
 def reconstruction_positive_negative_from(
     data_vector: np.ndarray[tuple[int], np.float64],
     curvature_reg_matrix: np.ndarray[tuple[int, int], np.float64],
@@ -715,7 +719,7 @@ def reconstruction_positive_negative_from(
     return np.linalg.solve(curvature_reg_matrix, data_vector)
 
 
-@jit("f8(c16[::1])", nopython=True, nogil=True, parallel=False)
+@numba.jit("f8(c16[::1])", nopython=True, nogil=True, parallel=False)
 def noise_normalization_complex_from(
     noise_map: np.ndarray[[int], np.complex128],
 ) -> float:
@@ -736,7 +740,7 @@ def noise_normalization_complex_from(
     return 2.0 * (noise_map.size * LOG_TWO_PI + np.log(np.abs(noise_map.view(np.float64))).sum())
 
 
-@jit(
+@numba.jit(
     "f8(f8[::1], c16[::1], c16[::1], f8[:, ::1], i8[:, ::1], f8[:, ::1], i8[:, ::1], i8[::1])",
     nopython=True,
     nogil=True,
