@@ -371,7 +371,7 @@ def mapping_matrix_from(
         for b in range(B):
             s = pix_indexes_for_sub_slim_index[m, b]
             if s == -1:
-                continue
+                break
             w = pix_weights_for_sub_slim_index[m, b]
             mapping_matrix[m, s] = w
     return mapping_matrix
@@ -496,12 +496,12 @@ def curvature_matrix_via_w_compact_sparse_mapping_matrix_from(
             for b1 in range(B):
                 s1 = pix_indexes_for_sub_slim_index[m1, b1]
                 if s1 == -1:
-                    continue
+                    break
                 t_m1_s1 = pix_weights_for_sub_slim_index[m1, b1]
                 for b2 in range(B):
                     s2 = pix_indexes_for_sub_slim_index[m2, b2]
                     if s2 == -1:
-                        continue
+                        break
                     t_m2_s2 = pix_weights_for_sub_slim_index[m2, b2]
                     F[s1, s2] += t_m1_s1 * w_m1_m2 * t_m2_s2
     return F
@@ -554,7 +554,7 @@ def w_tilde_matmul_mapping_matrix_via_compact_sparse_from(
             for b2 in range(B):
                 s2 = pix_indexes_for_sub_slim_index[m2, b2]
                 if s2 == -1:
-                    continue
+                    break
                 t_m2_s2 = pix_weights_for_sub_slim_index[m2, b2]
                 Ω[m1, s2] += w_m1_m2 * t_m2_s2
     return Ω
@@ -591,7 +591,7 @@ def sparse_mapping_matrix_transpose_matmul_matrix_from(
         for b1 in range(B):
             s1 = pix_indexes_for_sub_slim_index[m, b1]
             if s1 == -1:
-                continue
+                break
             t_m_s1 = pix_weights_for_sub_slim_index[m, b1]
             for s2 in range(S2):
                 F[s1, s2] += t_m_s1 * Ω[m, s2]
@@ -668,7 +668,7 @@ def constant_regularization_matrix_from(
         for j in range(P):
             k = neighbors[i, j]
             if k == -1:
-                continue
+                break
             regularization_matrix[i, k] -= regularization_coefficient
     return regularization_matrix
 
