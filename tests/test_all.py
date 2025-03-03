@@ -13,6 +13,8 @@ from jax.experimental import sparse
 
 from autojax import jax, numba, original
 
+RTOL: float = 2e-6
+
 tests_generated: list[str] = [
     "constant_regularization_matrix_from",
     # "curvature_matrix_via_w_tilde_curvature_preload_interferometer_from",
@@ -577,7 +579,7 @@ class AutoTestMeta(type):
                     func = getattr(self.mod, test)
                     run = get_run(func, data_dict, new_cls.mod == jax)
                     res = benchmark(run)
-                    np.testing.assert_allclose(res, ref_dict[test], rtol=2e-6)
+                    np.testing.assert_allclose(res, ref_dict[test], rtol=RTOL)
 
             else:
 
@@ -592,7 +594,7 @@ class AutoTestMeta(type):
                     func = getattr(self.mod, test)
                     run = get_run(func, data_dict)
                     res = run()
-                    np.testing.assert_allclose(res, ref_dict[test], rtol=2e-6)
+                    np.testing.assert_allclose(res, ref_dict[test], rtol=RTOL)
 
             test_method.__name__ = f"test_{test}_{new_cls.mod.__name__.split('.')[-1]}"
             return test_method
@@ -652,7 +654,7 @@ class TestLogLikelihood:
         func = original.log_likelihood_function_via_preload_method
         run = get_run(func, data_dict)
         res = benchmark(run)
-        np.testing.assert_allclose(res, ref_dict["log_likelihood_function"], rtol=2e-6)
+        np.testing.assert_allclose(res, ref_dict["log_likelihood_function"], rtol=RTOL)
 
 
 class TestWTilde:
@@ -678,7 +680,7 @@ class TestWTilde:
             data_dict,
         )
         res = benchmark(run)
-        np.testing.assert_allclose(res, ref.ref["w_tilde_curvature_interferometer_from"])
+        np.testing.assert_allclose(res, ref.ref["w_tilde_curvature_interferometer_from"], rtol=RTOL)
 
     @pytest.mark.benchmark
     def test_w_tilde_curvature_interferometer_from_compact_numba(self, data_bundle, benchmark):
@@ -696,7 +698,7 @@ class TestWTilde:
             data_dict,
         )
         res = benchmark(run)
-        np.testing.assert_allclose(res, ref.ref["w_tilde_curvature_interferometer_from"])
+        np.testing.assert_allclose(res, ref.ref["w_tilde_curvature_interferometer_from"], rtol=RTOL)
 
     @pytest.mark.benchmark
     def test_w_tilde_curvature_interferometer_from_compact_jax(self, data_bundle, benchmark):
@@ -716,7 +718,7 @@ class TestWTilde:
             jax=True,
         )
         res = benchmark(run)
-        np.testing.assert_allclose(res, ref.ref["w_tilde_curvature_interferometer_from"])
+        np.testing.assert_allclose(res, ref.ref["w_tilde_curvature_interferometer_from"], rtol=RTOL)
 
 
 class TestCurvatureMatrix:
@@ -736,7 +738,7 @@ class TestCurvatureMatrix:
             data_dict,
         )
         res = benchmark(run)
-        np.testing.assert_allclose(res, ref.ref["curvature_matrix_via_w_tilde_from"])
+        np.testing.assert_allclose(res, ref.ref["curvature_matrix_via_w_tilde_from"], rtol=RTOL)
 
     @pytest.mark.benchmark
     def test_curvature_matrix_numba(self, data_bundle, benchmark):
@@ -752,7 +754,7 @@ class TestCurvatureMatrix:
             data_dict,
         )
         res = benchmark(run)
-        np.testing.assert_allclose(res, ref.ref["curvature_matrix_via_w_tilde_from"])
+        np.testing.assert_allclose(res, ref.ref["curvature_matrix_via_w_tilde_from"], rtol=RTOL)
 
     @pytest.mark.benchmark
     def test_curvature_matrix_jax(self, data_bundle, benchmark):
@@ -769,7 +771,7 @@ class TestCurvatureMatrix:
             jax=True,
         )
         res = benchmark(run)
-        np.testing.assert_allclose(res, ref.ref["curvature_matrix_via_w_tilde_from"])
+        np.testing.assert_allclose(res, ref.ref["curvature_matrix_via_w_tilde_from"], rtol=RTOL)
 
     @pytest.mark.benchmark
     def test_curvature_matrix_jax_BCOO(self, data_bundle, benchmark):
@@ -788,7 +790,7 @@ class TestCurvatureMatrix:
             jax=True,
         )
         res = benchmark(run)
-        np.testing.assert_allclose(res, ref.ref["curvature_matrix_via_w_tilde_from"])
+        np.testing.assert_allclose(res, ref.ref["curvature_matrix_via_w_tilde_from"], rtol=RTOL)
 
     @pytest.mark.benchmark
     def test_curvature_matrix_preload_original(self, data_bundle, benchmark):
@@ -804,7 +806,7 @@ class TestCurvatureMatrix:
             data_dict,
         )
         res = benchmark(run)
-        np.testing.assert_allclose(res, ref.ref["curvature_matrix_via_w_tilde_from"])
+        np.testing.assert_allclose(res, ref.ref["curvature_matrix_via_w_tilde_from"], rtol=RTOL)
 
     @pytest.mark.benchmark
     def test_curvature_matrix_compact_numba(self, data_bundle, benchmark):
@@ -823,7 +825,7 @@ class TestCurvatureMatrix:
             data_dict,
         )
         res = benchmark(run)
-        np.testing.assert_allclose(res, ref.ref["curvature_matrix_via_w_tilde_from"])
+        np.testing.assert_allclose(res, ref.ref["curvature_matrix_via_w_tilde_from"], rtol=RTOL)
 
     @pytest.mark.benchmark
     def test_curvature_matrix_compact_sparse_mapping_matrix_numba(self, data_bundle, benchmark):
@@ -843,7 +845,7 @@ class TestCurvatureMatrix:
             data_dict,
         )
         res = benchmark(run)
-        np.testing.assert_allclose(res, ref.ref["curvature_matrix_via_w_tilde_from"])
+        np.testing.assert_allclose(res, ref.ref["curvature_matrix_via_w_tilde_from"], rtol=RTOL)
 
     @pytest.mark.benchmark
     def test_curvature_matrix_compact_sparse_mapping_matrix_in_2matmul_numba(self, data_bundle, benchmark):
@@ -863,7 +865,7 @@ class TestCurvatureMatrix:
             data_dict,
         )
         res = benchmark(run)
-        np.testing.assert_allclose(res, ref.ref["curvature_matrix_via_w_tilde_from"])
+        np.testing.assert_allclose(res, ref.ref["curvature_matrix_via_w_tilde_from"], rtol=RTOL)
 
     @pytest.mark.benchmark
     def test_curvature_matrix_compact_sparse_mapping_matrix_in_2matmul_jax(self, data_bundle, benchmark):
@@ -884,7 +886,7 @@ class TestCurvatureMatrix:
             jax=True,
         )
         res = benchmark(run)
-        np.testing.assert_allclose(res, ref.ref["curvature_matrix_via_w_tilde_from"])
+        np.testing.assert_allclose(res, ref.ref["curvature_matrix_via_w_tilde_from"], rtol=RTOL)
 
     @pytest.mark.benchmark
     def test_curvature_matrix_compact_jax(self, data_bundle, benchmark):
@@ -904,7 +906,7 @@ class TestCurvatureMatrix:
             jax=True,
         )
         res = benchmark(run)
-        np.testing.assert_allclose(res, ref.ref["curvature_matrix_via_w_tilde_from"])
+        np.testing.assert_allclose(res, ref.ref["curvature_matrix_via_w_tilde_from"], rtol=RTOL)
 
     @pytest.mark.benchmark
     def test_curvature_matrix_compact_jax_BCOO(self, data_bundle, benchmark):
@@ -925,4 +927,4 @@ class TestCurvatureMatrix:
             jax=True,
         )
         res = benchmark(run)
-        np.testing.assert_allclose(res, ref.ref["curvature_matrix_via_w_tilde_from"])
+        np.testing.assert_allclose(res, ref.ref["curvature_matrix_via_w_tilde_from"], rtol=RTOL)
