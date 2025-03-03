@@ -333,6 +333,80 @@ def curvature_matrix_via_w_compact_from(
     return curvature_matrix_via_w_tilde_from(w_tilde, mapping_matrix)
 
 
+@partial(jax.vmap, in_axes=[None, 0, None, None, None, None], out_axes=0)
+def _w_tilde_matmul_mapping_matrix_via_compact_sparse_from(
+    w_compact: np.ndarray[tuple[int, int], np.float64],
+    native_index_for_slim_index_m1: np.ndarray[tuple[int], np.int64],
+    native_index_for_slim_index: np.ndarray[tuple[int, int], np.int64],
+    pix_indexes_for_sub_slim_index: np.ndarray[tuple[int, int], np.int64],
+    pix_weights_for_sub_slim_index: np.ndarray[np.ndarray[tuple[int, int], np.float64]],
+    pixels: int,
+) -> np.ndarray[tuple[int], np.float64]:
+    """Calculate w_tilde @ mapping_matrix using the compact w_tilde matrix and the sparse mapping matrix.
+
+    This expands w_tilde @ mapping_matrix as M by S dense matrix.
+
+    This function before the vmap perform the calculation at a fixed row ``m1`` of w_tilde.
+
+    Memory cost: (3 + 2B)M + S
+
+    FLOP cost: 2(2 + B)M, B = pix_size_for_sub_slim_index.mean(), B=3 for Delaunay.
+    """
+    S: int = pixels
+    OFFSET: int = w_compact.shape[0] - 1
+    OUT_OF_BOUND_IDX = S
+
+    m1_0: int
+    m1_1: int
+    m1_0, m1_1 = native_index_for_slim_index_m1
+
+    # (M,)
+    m2_0 = native_index_for_slim_index[:, 0]
+    m2_1 = native_index_for_slim_index[:, 1]
+    n1: np.ndarray[tuple[int], np.int64] = m1_0 - m2_0
+    n2: np.ndarray[tuple[int], np.int64] = jnp.where(n1 >= 0, m1_1 - m2_1, m2_1 - m1_1) + OFFSET
+    w_m1_m2: np.ndarray[tuple[int], np.float64] = w_compact[jnp.abs(n1), n2]
+
+    # (M, B)
+    s2: np.ndarray[tuple[int, int], np.int64] = jnp.where(
+        pix_indexes_for_sub_slim_index == -1,
+        OUT_OF_BOUND_IDX,
+        pix_indexes_for_sub_slim_index,
+    )
+    t_m2_s2 = pix_weights_for_sub_slim_index
+
+    # (S,)
+    return jnp.zeros(S).at[s2].add((w_m1_m2.reshape(-1, 1) * t_m2_s2), mode="drop", unique_indices=False)
+
+
+@partial(jax.jit, static_argnums=4)
+def w_tilde_matmul_mapping_matrix_via_compact_sparse_from(
+    w_compact: np.ndarray[tuple[int, int], np.float64],
+    native_index_for_slim_index: np.ndarray[tuple[int, int], np.int64],
+    pix_indexes_for_sub_slim_index: np.ndarray[tuple[int, int], np.int64],
+    pix_weights_for_sub_slim_index: np.ndarray[np.ndarray[tuple[int, int], np.float64]],
+    pixels: int,
+) -> np.ndarray[tuple[int], np.float64]:
+    """Calculate w_tilde @ mapping_matrix using the compact w_tilde matrix and the sparse mapping matrix.
+
+    This expands w_tilde @ mapping_matrix as M by S dense matrix.
+
+    This wraps the vmap function as the ``native_index_for_slim_index`` is repeated, first for vmapping to ``m1``, second for ``m2``.
+
+    Memory cost: (3 + 2B + S)M + S
+
+    FLOP cost: 2(2 + B)M^2, B = pix_size_for_sub_slim_index.mean(), B=3 for Delaunay.
+    """
+    return _w_tilde_matmul_mapping_matrix_via_compact_sparse_from(
+        w_compact,
+        native_index_for_slim_index,
+        native_index_for_slim_index,
+        pix_indexes_for_sub_slim_index,
+        pix_weights_for_sub_slim_index,
+        pixels,
+    )
+
+
 @jax.jit
 def w_tilde_via_preload_from(
     w_tilde_preload: np.ndarray[tuple[int, int], np.float64],
