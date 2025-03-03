@@ -16,7 +16,7 @@ def get_callable_functions(module):
     return {
         name: attr
         for name in dir(module)
-        if callable(attr := getattr(module, name)) and not (inspect.isclass(attr) or inspect.ismodule(attr))
+        if callable(attr := getattr(module, name)) and not (name.startswith("_") or inspect.isclass(attr) or inspect.ismodule(attr))
     }
 
 
@@ -53,7 +53,7 @@ def diff_module(mod1, mod2):
         if params1 != params2:
             funcs_sig_diff[func_name] = (params1, params2)
 
-    return tuple(funcs1_set - funcs2_set), tuple(funcs2_set - funcs1_set), funcs_sig_diff
+    return funcs1_set - funcs2_set, funcs2_set - funcs1_set, funcs_sig_diff
 
 
 def print_diff(mod1, mod2):
@@ -62,15 +62,15 @@ def print_diff(mod1, mod2):
     mod2_name = mod2.__name__.split(".")[-1]
     print("=" * 80)
     print(f"Functions in {mod1_name} but not in {mod2_name}")
-    for func_name in diff1:
+    for func_name in sorted(diff1):
         print(f"  {func_name}")
     print("-" * 80)
     print(f"Functions in {mod2_name} but not in {mod1_name}")
-    for func_name in diff2:
+    for func_name in sorted(diff2):
         print(f"  {func_name}")
     print("-" * 80)
     print("Functions with different signatures")
-    for func_name, (params1, params2) in diff_sig.items():
+    for func_name, (params1, params2) in sorted(diff_sig.items()):
         print(f"  {func_name}")
         print(f"    {mod1_name}:")
         for param in params1:
@@ -83,7 +83,7 @@ def print_diff(mod1, mod2):
 def main():
     print("=" * 80)
     print("Functions in original:")
-    for func_name in get_callable_functions(original):
+    for func_name in sorted(get_callable_functions(original).keys()):
         print(f"  {func_name}")
     print_diff(original, numba)
     print_diff(numba, jax)
