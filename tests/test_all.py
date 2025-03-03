@@ -522,7 +522,8 @@ def data_bundle(request):
     data = Data()
     tests = tests_generated if Data is DataGenerated else tests_loaded
     ref = Reference(data, tests)
-    return data, ref
+    data_dict_jax = {k: jnp.array(v) if isinstance(v, np.ndarray) else v for k, v in data.dict().items()}
+    return data, ref, data_dict_jax
 
 
 class AutoTestMeta(type):
@@ -536,15 +537,13 @@ class AutoTestMeta(type):
 
                 @pytest.mark.benchmark
                 def test_method(self, data_bundle, benchmark):
-                    data, ref = data_bundle
+                    data, ref, data_dict_jax = data_bundle
                     if test not in ref.tests:
                         pytest.skip(f"Skip {test} from {type(data).__name__}")
 
                     benchmark.group = f"{test}_{type(data).__name__}"
 
-                    data_dict = data.dict()
-                    if new_cls.mod == jax:
-                        data_dict = {k: jnp.array(v) if isinstance(v, np.ndarray) else v for k, v in data_dict.items()}
+                    data_dict = data_dict_jax if new_cls.mod == jax else data.dict()
                     ref_dict = ref.ref
                     func = getattr(self.mod, test)
                     sig = inspect.signature(func)
@@ -557,7 +556,7 @@ class AutoTestMeta(type):
 
                 @pytest.mark.unittest
                 def test_method(self, data_bundle):
-                    data, ref = data_bundle
+                    data, ref, _ = data_bundle
                     if test not in ref.tests:
                         pytest.skip(f"Skip {test} from {type(data).__name__}")
 
@@ -620,7 +619,7 @@ class TestLogLikelihood:
 
     @pytest.mark.benchmark
     def test_log_likelihood_function_via_preload_method_original(self, data_bundle, benchmark):
-        data, ref = data_bundle
+        data, ref, _ = data_bundle
         benchmark.group = f"log_likelihood_function_{type(data).__name__}"
 
         data_dict = data.dict() | {"pix_pixels": data.S}
@@ -648,7 +647,7 @@ class TestWTilde:
 
     @pytest.mark.benchmark
     def test_w_tilde_curvature_interferometer_from_preload_original(self, data_bundle, benchmark):
-        data, ref = data_bundle
+        data, ref, _ = data_bundle
         data_dict = data.dict()
 
         test = "w_tilde_curvature_interferometer_from"
@@ -674,7 +673,7 @@ class TestWTilde:
 
     @pytest.mark.benchmark
     def test_w_tilde_curvature_interferometer_from_compact_numba(self, data_bundle, benchmark):
-        data, ref = data_bundle
+        data, ref, _ = data_bundle
         data_dict = data.dict()
 
         test = "w_tilde_curvature_interferometer_from"
@@ -700,16 +699,16 @@ class TestWTilde:
 
     @pytest.mark.benchmark
     def test_w_tilde_curvature_interferometer_from_compact_jax(self, data_bundle, benchmark):
-        data, ref = data_bundle
-        data_dict = data.dict()
+        data, ref, data_dict_jax = data_bundle
+        data_dict = data_dict_jax
 
         test = "w_tilde_curvature_interferometer_from"
         benchmark.group = f"{test}_{type(data).__name__}"
 
-        noise_map_real = jnp.array(data_dict["noise_map_real"])
-        uv_wavelengths = jnp.array(data_dict["uv_wavelengths"])
+        noise_map_real = data_dict["noise_map_real"]
+        uv_wavelengths = data_dict["uv_wavelengths"]
         N = data.N
-        native_index_for_slim_index = jnp.array(data_dict["native_index_for_slim_index"])
+        native_index_for_slim_index = data_dict["native_index_for_slim_index"]
         pixel_scale = data.pixel_scale
 
         def run():
@@ -730,7 +729,7 @@ class TestCurvatureMatrix:
 
     @pytest.mark.benchmark
     def test_curvature_matrix_original(self, data_bundle, benchmark):
-        data, ref = data_bundle
+        data, ref, _ = data_bundle
         data_dict = data.dict()
 
         test = "curvature_matrix"
@@ -758,7 +757,7 @@ class TestCurvatureMatrix:
 
     @pytest.mark.benchmark
     def test_curvature_matrix_numba(self, data_bundle, benchmark):
-        data, ref = data_bundle
+        data, ref, _ = data_bundle
         data_dict = data.dict()
 
         test = "curvature_matrix"
@@ -786,16 +785,16 @@ class TestCurvatureMatrix:
 
     @pytest.mark.benchmark
     def test_curvature_matrix_jax(self, data_bundle, benchmark):
-        data, ref = data_bundle
-        data_dict = data.dict()
+        data, ref, data_dict_jax = data_bundle
+        data_dict = data_dict_jax
 
         test = "curvature_matrix"
         benchmark.group = f"{test}_{type(data).__name__}"
 
-        noise_map_real = jnp.array(data_dict["noise_map_real"])
-        uv_wavelengths = jnp.array(data_dict["uv_wavelengths"])
-        grid_radians_slim = jnp.array(data_dict["grid_radians_slim"])
-        mapping_matrix = jnp.array(data_dict["mapping_matrix"])
+        noise_map_real = data_dict["noise_map_real"]
+        uv_wavelengths = data_dict["uv_wavelengths"]
+        grid_radians_slim = data_dict["grid_radians_slim"]
+        mapping_matrix = data_dict["mapping_matrix"]
 
         def run():
             w_tilde = jax.w_tilde_curvature_interferometer_from(
@@ -814,15 +813,15 @@ class TestCurvatureMatrix:
 
     @pytest.mark.benchmark
     def test_curvature_matrix_jax_BCOO(self, data_bundle, benchmark):
-        data, ref = data_bundle
-        data_dict = data.dict()
+        data, ref, data_dict_jax = data_bundle
+        data_dict = data_dict_jax
 
         test = "curvature_matrix"
         benchmark.group = f"{test}_{type(data).__name__}"
 
-        noise_map_real = jnp.array(data_dict["noise_map_real"])
-        uv_wavelengths = jnp.array(data_dict["uv_wavelengths"])
-        grid_radians_slim = jnp.array(data_dict["grid_radians_slim"])
+        noise_map_real = data_dict["noise_map_real"]
+        uv_wavelengths = data_dict["uv_wavelengths"]
+        grid_radians_slim = data_dict["grid_radians_slim"]
         mapping_matrix = sparse.BCOO.fromdense(data_dict["mapping_matrix"])
 
         def run():
@@ -842,7 +841,7 @@ class TestCurvatureMatrix:
 
     @pytest.mark.benchmark
     def test_curvature_matrix_preload_original(self, data_bundle, benchmark):
-        data, ref = data_bundle
+        data, ref, _ = data_bundle
         data_dict = data.dict() | {"pix_pixels": data.S}
 
         test = "curvature_matrix"
@@ -880,7 +879,7 @@ class TestCurvatureMatrix:
 
     @pytest.mark.benchmark
     def test_curvature_matrix_compact_numba(self, data_bundle, benchmark):
-        data, ref = data_bundle
+        data, ref, _ = data_bundle
         data_dict = data.dict()
 
         test = "curvature_matrix"
@@ -912,7 +911,7 @@ class TestCurvatureMatrix:
 
     @pytest.mark.benchmark
     def test_curvature_matrix_compact_sparse_mapping_matrix_numba(self, data_bundle, benchmark):
-        data, ref = data_bundle
+        data, ref, _ = data_bundle
         data_dict = data.dict()
 
         test = "curvature_matrix"
@@ -948,7 +947,7 @@ class TestCurvatureMatrix:
 
     @pytest.mark.benchmark
     def test_curvature_matrix_compact_sparse_mapping_matrix_in_2matmul_numba(self, data_bundle, benchmark):
-        data, ref = data_bundle
+        data, ref, _ = data_bundle
         data_dict = data.dict()
 
         test = "curvature_matrix"
@@ -984,18 +983,18 @@ class TestCurvatureMatrix:
 
     @pytest.mark.benchmark
     def test_curvature_matrix_compact_sparse_mapping_matrix_in_2matmul_jax(self, data_bundle, benchmark):
-        data, ref = data_bundle
-        data_dict = data.dict()
+        data, ref, data_dict_jax = data_bundle
+        data_dict = data_dict_jax
 
         test = "curvature_matrix"
         benchmark.group = f"{test}_{type(data).__name__}"
 
-        noise_map_real = jnp.array(data_dict["noise_map_real"])
-        uv_wavelengths = jnp.array(data_dict["uv_wavelengths"])
+        noise_map_real = data_dict["noise_map_real"]
+        uv_wavelengths = data_dict["uv_wavelengths"]
         N = data.N
-        native_index_for_slim_index = jnp.array(data_dict["native_index_for_slim_index"])
-        pix_indexes_for_sub_slim_index = jnp.array(data_dict["pix_indexes_for_sub_slim_index"])
-        pix_weights_for_sub_slim_index = jnp.array(data_dict["pix_weights_for_sub_slim_index"])
+        native_index_for_slim_index = data_dict["native_index_for_slim_index"]
+        pix_indexes_for_sub_slim_index = data_dict["pix_indexes_for_sub_slim_index"]
+        pix_weights_for_sub_slim_index = data_dict["pix_weights_for_sub_slim_index"]
         pixels = data.S
         pixel_scale = data.pixel_scale
 
@@ -1020,17 +1019,17 @@ class TestCurvatureMatrix:
 
     @pytest.mark.benchmark
     def test_curvature_matrix_compact_jax(self, data_bundle, benchmark):
-        data, ref = data_bundle
-        data_dict = data.dict()
+        data, ref, data_dict_jax = data_bundle
+        data_dict = data_dict_jax
 
         test = "curvature_matrix"
         benchmark.group = f"{test}_{type(data).__name__}"
 
-        noise_map_real = jnp.array(data_dict["noise_map_real"])
-        uv_wavelengths = jnp.array(data_dict["uv_wavelengths"])
+        noise_map_real = data_dict["noise_map_real"]
+        uv_wavelengths = data_dict["uv_wavelengths"]
         N = data.N
-        native_index_for_slim_index = jnp.array(data_dict["native_index_for_slim_index"])
-        mapping_matrix = jnp.array(data_dict["mapping_matrix"])
+        native_index_for_slim_index = data_dict["native_index_for_slim_index"]
+        mapping_matrix = data_dict["mapping_matrix"]
         pixel_scale = data.pixel_scale
 
         def run():
@@ -1052,16 +1051,16 @@ class TestCurvatureMatrix:
 
     @pytest.mark.benchmark
     def test_curvature_matrix_compact_jax_BCOO(self, data_bundle, benchmark):
-        data, ref = data_bundle
-        data_dict = data.dict()
+        data, ref, data_dict_jax = data_bundle
+        data_dict = data_dict_jax
 
         test = "curvature_matrix"
         benchmark.group = f"{test}_{type(data).__name__}"
 
-        noise_map_real = jnp.array(data_dict["noise_map_real"])
-        uv_wavelengths = jnp.array(data_dict["uv_wavelengths"])
+        noise_map_real = data_dict["noise_map_real"]
+        uv_wavelengths = data_dict["uv_wavelengths"]
         N = data.N
-        native_index_for_slim_index = jnp.array(data_dict["native_index_for_slim_index"])
+        native_index_for_slim_index = data_dict["native_index_for_slim_index"]
         mapping_matrix = sparse.BCOO.fromdense(data_dict["mapping_matrix"])
         pixel_scale = data.pixel_scale
 
