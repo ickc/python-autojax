@@ -573,7 +573,7 @@ def sparse_mapping_matrix_transpose_matmul_matrix_from(
 
     Memory cost: S1 S2 <- the output matrix size (no extra memory is used).
 
-    FLOP cost: 2B S1 S2, B = pix_size_for_sub_slim_index.mean(), B=3 for Delaunay.
+    FLOP cost: 2M B S2, B = pix_size_for_sub_slim_index.mean(), B=3 for Delaunay.
     """
     Ω = matrix
     M, S2 = Ω.shape
@@ -614,7 +614,7 @@ def curvature_matrix_via_w_compact_sparse_mapping_matrix_in_2matmul_from(
 
     Memory cost: MS + S^2
 
-    FLOP cost: 2(2 + B)M^2 + 2BS^2, B = pix_size_for_sub_slim_index.mean(), B=3 for Delaunay.
+    FLOP cost: 2(2 + B)M^2 + 2MBS, B = pix_size_for_sub_slim_index.mean(), B=3 for Delaunay.
 
     """
     return sparse_mapping_matrix_transpose_matmul_matrix_from(
