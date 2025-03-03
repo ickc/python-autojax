@@ -424,11 +424,6 @@ def sparse_mapping_matrix_transpose_matmul(
     S1: int = pixels
     S2 = matrix.shape[1]
     OUT_OF_BOUND_IDX: int = S1
-    pix_indexes_for_sub_slim_index = jnp.where(
-        pix_indexes_for_sub_slim_index == -1,
-        OUT_OF_BOUND_IDX,
-        pix_indexes_for_sub_slim_index,
-    )
 
     def f_m(
         carry: np.ndarray[tuple[int, int], np.float64],
@@ -451,7 +446,7 @@ def sparse_mapping_matrix_transpose_matmul(
         # (S2,)
         Ω = matrix
         # (B,)
-        s1 = pix_indexes_for_sub_slim_index
+        s1 = jnp.where(pix_indexes_for_sub_slim_index == -1, OUT_OF_BOUND_IDX, pix_indexes_for_sub_slim_index)
         t_m_s1 = pix_weights_for_sub_slim_index
         # (S1, S2)
         return carry.at[s1, :].add(t_m_s1.reshape(-1, 1) * Ω, mode="drop", unique_indices=True)
@@ -464,8 +459,7 @@ def sparse_mapping_matrix_transpose_matmul(
             np.ndarray[np.ndarray[tuple[int], np.float64]],
         ],
     ) -> tuple[np.ndarray[tuple[int, int], np.float64], None]:
-        matrix, pix_indexes_for_sub_slim_index, pix_weights_for_sub_slim_index = args
-        return f_m(carry, matrix, pix_indexes_for_sub_slim_index, pix_weights_for_sub_slim_index), None
+        return f_m(carry, *args), None
 
     res, _ = jax.lax.scan(
         f_scan,
