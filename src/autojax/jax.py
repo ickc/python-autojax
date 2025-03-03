@@ -97,7 +97,6 @@ def w_tilde_data_interferometer_from(
     noise_map_real: np.ndarray[tuple[int], np.float64],
     uv_wavelengths: np.ndarray[tuple[int, int], np.float64],
     grid_radians_slim: np.ndarray[tuple[int, int], np.float64],
-    native_index_for_slim_index: np.ndarray[tuple[int, int], np.int64],
 ) -> np.ndarray[tuple[int], np.float64]:
     r"""
     The matrix w_tilde is a matrix of dimensions [image_pixels, image_pixels] that encodes the PSF convolution of
