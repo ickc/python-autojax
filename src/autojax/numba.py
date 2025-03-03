@@ -208,7 +208,7 @@ def w_tilde_curvature_interferometer_from(
 
 
 @numba.jit("f8[:, ::1](i8, f8[::1], f8[:, ::1], f8)", nopython=True, nogil=True, parallel=True)
-def w_tilde_curvature_compact_interferometer_from(
+def w_compact_curvature_interferometer_from(
     grid_size: int,
     noise_map_real: np.ndarray[tuple[int], np.float64],
     uv_wavelengths: np.ndarray[tuple[int, int], np.float64],
@@ -446,7 +446,7 @@ def curvature_matrix_via_w_compact_from(
 
 
 @numba.jit("f8[:, ::1](f8[:, ::1], i8[:, ::1], i8[:, ::1], f8[:, ::1], i8)", nopython=True, nogil=True, parallel=False)
-def curvature_matrix_via_w_compact_sparse_mapping_matrix_from(
+def curvature_matrix_via_w_compact_sparse_mapping_matrix_direct_from(
     w_compact: np.ndarray[tuple[int, int], np.float64],
     native_index_for_slim_index: np.ndarray[tuple[int, int], np.int64],
     pix_indexes_for_sub_slim_index: np.ndarray[tuple[int, int], np.int64],
@@ -507,7 +507,7 @@ def curvature_matrix_via_w_compact_sparse_mapping_matrix_from(
 
 
 @numba.jit("f8[:, ::1](f8[:, ::1], i8[:, ::1], i8[:, ::1], f8[:, ::1], i8)", nopython=True, nogil=True, parallel=False)
-def w_tilde_matmul_mapping_matrix_via_compact_sparse_from(
+def _w_compact_matmul_sparse_mapping_matrix_from(
     w_compact: np.ndarray[tuple[int, int], np.float64],
     native_index_for_slim_index: np.ndarray[tuple[int, int], np.int64],
     pix_indexes_for_sub_slim_index: np.ndarray[tuple[int, int], np.int64],
@@ -560,7 +560,7 @@ def w_tilde_matmul_mapping_matrix_via_compact_sparse_from(
 
 
 @numba.jit("f8[:, ::1](f8[:, ::1], i8[:, ::1], f8[:, ::1], i8)", nopython=True, nogil=True, parallel=False)
-def sparse_mapping_matrix_transpose_matmul_matrix_from(
+def sparse_mapping_matrix_transpose_matmul(
     matrix: np.ndarray[tuple[int, int], np.float64],
     pix_indexes_for_sub_slim_index: np.ndarray[tuple[int, int], np.int64],
     pix_weights_for_sub_slim_index: np.ndarray[np.ndarray[tuple[int, int], np.float64]],
@@ -598,7 +598,7 @@ def sparse_mapping_matrix_transpose_matmul_matrix_from(
 
 
 @numba.jit("f8[:, ::1](f8[:, ::1], i8[:, ::1], i8[:, ::1], f8[:, ::1], i8)", nopython=True, nogil=True, parallel=False)
-def curvature_matrix_via_w_compact_sparse_mapping_matrix_in_2matmul_from(
+def curvature_matrix_via_w_compact_sparse_mapping_matrix_from(
     w_compact: np.ndarray[tuple[int, int], np.float64],
     native_index_for_slim_index: np.ndarray[tuple[int, int], np.int64],
     pix_indexes_for_sub_slim_index: np.ndarray[tuple[int, int], np.int64],
@@ -616,8 +616,8 @@ def curvature_matrix_via_w_compact_sparse_mapping_matrix_in_2matmul_from(
     FLOP cost: 2(2 + B)M^2 + 2MBS, B = pix_size_for_sub_slim_index.mean(), B=3 for Delaunay.
 
     """
-    return sparse_mapping_matrix_transpose_matmul_matrix_from(
-        w_tilde_matmul_mapping_matrix_via_compact_sparse_from(
+    return sparse_mapping_matrix_transpose_matmul(
+        _w_compact_matmul_sparse_mapping_matrix_from(
             w_compact,
             native_index_for_slim_index,
             pix_indexes_for_sub_slim_index,

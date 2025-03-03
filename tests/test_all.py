@@ -286,7 +286,7 @@ class Data:
 
     @cached_property
     def w_compact(self) -> np.ndarray[tuple[int, int], np.float64]:
-        return numba.w_tilde_curvature_compact_interferometer_from(
+        return numba.w_compact_curvature_interferometer_from(
             self.N,
             self.noise_map_real,
             self.uv_wavelengths,
@@ -717,7 +717,7 @@ class TestWTilde:
         test = "w_tilde_curvature_interferometer_from"
         benchmark.group = f"{test}_{type(data).__name__}"
         run = get_run_composed_from(
-            numba.w_tilde_curvature_compact_interferometer_from,
+            numba.w_compact_curvature_interferometer_from,
             numba.w_tilde_via_compact_from,
             data_dict,
         )
@@ -736,7 +736,7 @@ class TestWTilde:
         benchmark.group = f"{test}_{type(data).__name__}"
 
         run = get_run_composed_from(
-            jax.w_tilde_curvature_compact_interferometer_from,
+            jax.w_compact_curvature_interferometer_from,
             jax.w_tilde_via_compact_from,
             data_dict,
             jax=True,
@@ -844,7 +844,7 @@ class TestCurvatureMatrix:
         benchmark.group = f"{test}_{type(data).__name__}"
 
         run = get_run_composed_from(
-            numba.w_tilde_curvature_compact_interferometer_from,
+            numba.w_compact_curvature_interferometer_from,
             numba.curvature_matrix_via_w_compact_from,
             data_dict,
         )
@@ -864,8 +864,8 @@ class TestCurvatureMatrix:
         benchmark.group = f"{test}_{type(data).__name__}"
 
         run = get_run_composed_from(
-            numba.w_tilde_curvature_compact_interferometer_from,
-            numba.curvature_matrix_via_w_compact_sparse_mapping_matrix_from,
+            numba.w_compact_curvature_interferometer_from,
+            numba.curvature_matrix_via_w_compact_sparse_mapping_matrix_direct_from,
             data_dict,
         )
         res = benchmark(run)
@@ -884,8 +884,8 @@ class TestCurvatureMatrix:
         benchmark.group = f"{test}_{type(data).__name__}"
 
         run = get_run_composed_from(
-            numba.w_tilde_curvature_compact_interferometer_from,
-            numba.curvature_matrix_via_w_compact_sparse_mapping_matrix_in_2matmul_from,
+            numba.w_compact_curvature_interferometer_from,
+            numba.curvature_matrix_via_w_compact_sparse_mapping_matrix_from,
             data_dict,
         )
         res = benchmark(run)
@@ -904,8 +904,8 @@ class TestCurvatureMatrix:
         benchmark.group = f"{test}_{type(data).__name__}"
 
         run = get_run_composed_from(
-            jax.w_tilde_curvature_compact_interferometer_from,
-            jax.curvature_matrix_via_w_compact_sparse_mapping_matrix_in_2matmul_from,
+            jax.w_compact_curvature_interferometer_from,
+            jax.curvature_matrix_via_w_compact_sparse_mapping_matrix_from,
             data_dict,
             jax=True,
         )
@@ -924,7 +924,7 @@ class TestCurvatureMatrix:
         benchmark.group = f"{test}_{type(data).__name__}"
 
         run = get_run_composed_from(
-            jax.w_tilde_curvature_compact_interferometer_from,
+            jax.w_compact_curvature_interferometer_from,
             jax.curvature_matrix_via_w_compact_from,
             data_dict,
             jax=True,
@@ -945,7 +945,7 @@ class TestCurvatureMatrix:
         benchmark.group = f"{test}_{type(data).__name__}"
 
         run = get_run_composed_from(
-            jax.w_tilde_curvature_compact_interferometer_from,
+            jax.w_compact_curvature_interferometer_from,
             jax.curvature_matrix_via_w_compact_from,
             data_dict,
             jax=True,

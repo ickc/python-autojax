@@ -52,7 +52,7 @@ def main(args=None):
     mapping_matrix = jnp.array(mapping_matrix)
 
     def run():
-        w_compact = autojax.jax.w_tilde_curvature_compact_interferometer_from(
+        w_compact = autojax.jax.w_compact_curvature_interferometer_from(
             args.N,
             noise_map_real,
             uv_wavelengths,
