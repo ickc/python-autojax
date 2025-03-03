@@ -14,21 +14,21 @@ from jax.experimental import sparse
 from autojax import jax, numba, original
 
 tests_generated: list[str] = [
+    "constant_regularization_matrix_from",
+    # "curvature_matrix_via_w_tilde_curvature_preload_interferometer_from",
+    "curvature_matrix_via_w_tilde_from",
+    "data_vector_from",
+    # "log_likelihood_function_via_preload_method",
+    "log_likelihood_function",
+    "mapping_matrix_from",
     # "mask_2d_centres_from",
     "mask_2d_circular_from",
-    "w_tilde_data_interferometer_from",
+    "noise_normalization_complex_from",
+    "reconstruction_positive_negative_from",
     "w_tilde_curvature_interferometer_from",
     # "w_tilde_curvature_preload_interferometer_from",
+    "w_tilde_data_interferometer_from",
     "w_tilde_via_preload_from",
-    "mapping_matrix_from",
-    "data_vector_from",
-    "curvature_matrix_via_w_tilde_from",
-    # "curvature_matrix_via_w_tilde_curvature_preload_interferometer_from",
-    "constant_regularization_matrix_from",
-    "reconstruction_positive_negative_from",
-    "noise_normalization_complex_from",
-    "log_likelihood_function",
-    # "log_likelihood_function_via_preload_method",
 ]
 tests_loaded: list[str] = tests_generated + [
     "w_tilde_via_preload_from",
@@ -36,21 +36,21 @@ tests_loaded: list[str] = tests_generated + [
 
 
 tests_all: list[str] = [
+    "constant_regularization_matrix_from",
+    "curvature_matrix_via_w_tilde_curvature_preload_interferometer_from",
+    "curvature_matrix_via_w_tilde_from",
+    "data_vector_from",
+    "log_likelihood_function_via_preload_method",
+    "log_likelihood_function",
+    "mapping_matrix_from",
     # "mask_2d_centres_from",
     "mask_2d_circular_from",
-    "w_tilde_data_interferometer_from",
+    "noise_normalization_complex_from",
+    "reconstruction_positive_negative_from",
     "w_tilde_curvature_interferometer_from",
     "w_tilde_curvature_preload_interferometer_from",
+    "w_tilde_data_interferometer_from",
     "w_tilde_via_preload_from",
-    "mapping_matrix_from",
-    "data_vector_from",
-    "curvature_matrix_via_w_tilde_from",
-    "curvature_matrix_via_w_tilde_curvature_preload_interferometer_from",
-    "constant_regularization_matrix_from",
-    "reconstruction_positive_negative_from",
-    "noise_normalization_complex_from",
-    "log_likelihood_function",
-    "log_likelihood_function_via_preload_method",
 ]
 
 
