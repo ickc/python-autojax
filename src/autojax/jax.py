@@ -407,6 +407,109 @@ def w_tilde_matmul_mapping_matrix_via_compact_sparse_from(
     )
 
 
+@partial(jax.jit, static_argnums=3)
+def sparse_mapping_matrix_transpose_matmul_matrix_from(
+    matrix: np.ndarray[tuple[int, int], np.float64],
+    pix_indexes_for_sub_slim_index: np.ndarray[tuple[int, int], np.int64],
+    pix_weights_for_sub_slim_index: np.ndarray[np.ndarray[tuple[int, int], np.float64]],
+    pixels: int,
+) -> np.ndarray[tuple[int, int], np.float64]:
+    """Calculate T^T @ matrix using the sparse mapping matrix representation.
+
+    Assuming matrix is M by S2,
+
+    Memory cost: 2B + (B + 2 S1)S2
+
+    FLOP cost: 2M B S2, B = pix_size_for_sub_slim_index.mean(), B=3 for Delaunay.
+    """
+
+    def f_m(
+        matrix: np.ndarray[tuple[int], np.float64],
+        pix_indexes_for_sub_slim_index: np.ndarray[tuple[int], np.int64],
+        pix_weights_for_sub_slim_index: np.ndarray[np.ndarray[tuple[int], np.float64]],
+        pixels: int,
+    ) -> np.ndarray[tuple[int, int], np.float64]:
+        """Calculate T^T @ ``matrix`` using the sparse mapping matrix representation.
+
+        Assuming ``matrix`` is M by S2,
+
+        this function focused on a fixed m, i.e. ``matrix`` is of shape (S2,), and ``mapping_matrix`` would be of shape (S1,)
+
+        This function effectively perform the outer product of this row of ``mapping_matrix`` with the corresponding row of ``matrix``.
+
+        Memory cost: 2B + (B + S1)S2
+
+        FLOP cost: 2B S2
+        """
+        # (S2,)
+        Ω = matrix
+
+        S1: int = pixels
+        S2 = Ω.shape[0]
+        OUT_OF_BOUND_IDX: int = S1
+
+        # (B,)
+        s1 = jnp.where(pix_indexes_for_sub_slim_index == -1, OUT_OF_BOUND_IDX, pix_indexes_for_sub_slim_index)
+        t_m_s1 = pix_weights_for_sub_slim_index
+
+        # (S1, S2)
+        return jnp.zeros((S1, S2)).at[s1, :].add(t_m_s1.reshape(-1, 1) * Ω, mode="drop", unique_indices=False)
+
+    def f_scan(
+        sum_: np.ndarray[tuple[int, int], np.float64],
+        args: tuple[
+            np.ndarray[tuple[int], np.float64],
+            np.ndarray[tuple[int], np.int64],
+            np.ndarray[np.ndarray[tuple[int], np.float64]],
+        ],
+    ) -> tuple[np.ndarray[tuple[int, int], np.float64], None]:
+        matrix, pix_indexes_for_sub_slim_index, pix_weights_for_sub_slim_index = args
+        return sum_ + f_m(matrix, pix_indexes_for_sub_slim_index, pix_weights_for_sub_slim_index, pixels), None
+
+    res, _ = jax.lax.scan(
+        f_scan,
+        jnp.zeros((pixels, matrix.shape[1])),
+        (
+            matrix,
+            pix_indexes_for_sub_slim_index,
+            pix_weights_for_sub_slim_index,
+        ),
+    )
+    return res
+
+
+@partial(jax.jit, static_argnums=4)
+def curvature_matrix_via_w_compact_sparse_mapping_matrix_in_2matmul_from(
+    w_compact: np.ndarray[tuple[int, int], np.float64],
+    native_index_for_slim_index: np.ndarray[tuple[int, int], np.int64],
+    pix_indexes_for_sub_slim_index: np.ndarray[tuple[int, int], np.int64],
+    pix_weights_for_sub_slim_index: np.ndarray[np.ndarray[tuple[int, int], np.float64]],
+    pixels: int,
+) -> np.ndarray[tuple[int, int], np.float64]:
+    """Calculate the curvature matrix using the compact w_tilde matrix and the sparse mapping matrix.
+
+    This calculates T^T @ w_tilde @ T as two matrix multiplications, WT = w_tilde @ T and F = T^T @ WT.
+
+    Memory cost: max[(3 + 2B)M + S, 2B + (B + S)S] + MS + S^2 ~ O((3 + 2B + S)M)
+
+    FLOP cost: 2(2 + B)M^2 + 2MBS, B = pix_size_for_sub_slim_index.mean(), B=3 for Delaunay.
+
+    """
+    return sparse_mapping_matrix_transpose_matmul_matrix_from(
+        _w_tilde_matmul_mapping_matrix_via_compact_sparse_from(
+            w_compact,
+            native_index_for_slim_index,
+            native_index_for_slim_index,
+            pix_indexes_for_sub_slim_index,
+            pix_weights_for_sub_slim_index,
+            pixels,
+        ),
+        pix_indexes_for_sub_slim_index,
+        pix_weights_for_sub_slim_index,
+        pixels,
+    )
+
+
 @jax.jit
 def w_tilde_via_preload_from(
     w_tilde_preload: np.ndarray[tuple[int, int], np.float64],
