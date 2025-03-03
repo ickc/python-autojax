@@ -2,6 +2,8 @@
 *.pyc
 dist/
 docs/api/
+*.ipynb
+root.log
 
 # pixi environments
 .pixi
