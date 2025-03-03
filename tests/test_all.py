@@ -802,69 +802,26 @@ class TestWTilde:
 
 
 class TestCurvatureMatrix:
-    """Compute curvature matrix via various methods."""
+    """Compute curvature matrix via various methods.
+
+    This adds on top of existing benchmarks to compare the performance of the preload method.
+
+    The test names are a bit strange, but is designed to be filtered like this:
+
+        pytest -m benchmark -k curvature_matrix_via_w_tilde_from
+    """
 
     @pytest.mark.benchmark
-    def test_curvature_matrix_original(self, data_bundle, benchmark):
-        data, ref, _ = data_bundle
-        data_dict = data.dict()
-
-        test = "curvature_matrix"
-        benchmark.group = f"{test}_{type(data).__name__}"
-
-        run = get_run_composed_from(
-            original.w_tilde_curvature_interferometer_from,
-            original.curvature_matrix_via_w_tilde_from,
-            data_dict,
-        )
-        res = benchmark(run)
-        np.testing.assert_allclose(res, ref.ref["curvature_matrix_via_w_tilde_from"], rtol=RTOL)
-
-    @pytest.mark.benchmark
-    def test_curvature_matrix_numba(self, data_bundle, benchmark):
-        data, ref, _ = data_bundle
-        data_dict = data.dict()
-
-        test = "curvature_matrix"
-        benchmark.group = f"{test}_{type(data).__name__}"
-
-        run = get_run_composed_from(
-            numba.w_tilde_curvature_interferometer_from,
-            numba.curvature_matrix_via_w_tilde_from,
-            data_dict,
-        )
-        res = benchmark(run)
-        np.testing.assert_allclose(res, ref.ref["curvature_matrix_via_w_tilde_from"], rtol=RTOL)
-
-    @pytest.mark.benchmark
-    def test_curvature_matrix_jax(self, data_bundle, benchmark):
-        data, ref, data_dict_jax = data_bundle
-        data_dict = data_dict_jax
-
-        test = "curvature_matrix"
-        benchmark.group = f"{test}_{type(data).__name__}"
-
-        run = get_run_composed_from(
-            jax.w_tilde_curvature_interferometer_from,
-            jax.curvature_matrix_via_w_tilde_from,
-            data_dict,
-            jax=True,
-        )
-        res = benchmark(run)
-        np.testing.assert_allclose(res, ref.ref["curvature_matrix_via_w_tilde_from"], rtol=RTOL)
-
-    @pytest.mark.benchmark
-    def test_curvature_matrix_jax_BCOO(self, data_bundle, benchmark):
+    def test_curvature_matrix_via_w_tilde_from_jax_BCOO(self, data_bundle, benchmark):
         data, ref, data_dict_jax = data_bundle
         data_dict = data_dict_jax | {
             "mapping_matrix": data_dict_jax["mapping_matrix_BCOO"],
         }
 
-        test = "curvature_matrix"
+        test = "curvature_matrix_via_w_tilde_from"
         benchmark.group = f"{test}_{type(data).__name__}"
 
-        run = get_run_composed_from(
-            jax.w_tilde_curvature_interferometer_from,
+        run = get_run(
             jax.curvature_matrix_via_w_tilde_from,
             data_dict,
             jax=True,
@@ -873,15 +830,14 @@ class TestCurvatureMatrix:
         np.testing.assert_allclose(res, ref.ref["curvature_matrix_via_w_tilde_from"], rtol=RTOL)
 
     @pytest.mark.benchmark
-    def test_curvature_matrix_preload_original(self, data_bundle, benchmark):
+    def test_curvature_matrix_via_w_tilde_from_original_preload_direct(self, data_bundle, benchmark):
         data, ref, _ = data_bundle
         data_dict = data.dict() | {"pix_pixels": data.S}
 
-        test = "curvature_matrix"
+        test = "curvature_matrix_via_w_tilde_from"
         benchmark.group = f"{test}_{type(data).__name__}"
 
-        run = get_run_composed_from(
-            original.w_tilde_curvature_preload_interferometer_from,
+        run = get_run(
             original.curvature_matrix_via_w_tilde_curvature_preload_interferometer_from,
             data_dict,
         )
@@ -889,18 +845,17 @@ class TestCurvatureMatrix:
         np.testing.assert_allclose(res, ref.ref["curvature_matrix_via_w_tilde_from"], rtol=RTOL)
 
     @pytest.mark.benchmark
-    def test_curvature_matrix_compact_numba(self, data_bundle, benchmark):
+    def test_curvature_matrix_via_w_tilde_from_numba_compact(self, data_bundle, benchmark):
         data, ref, _ = data_bundle
         data_dict = data.dict() | {
             "grid_size": data.N,
             "pixel_scale": data.pixel_scale,
         }
 
-        test = "curvature_matrix"
+        test = "curvature_matrix_via_w_tilde_from"
         benchmark.group = f"{test}_{type(data).__name__}"
 
-        run = get_run_composed_from(
-            numba.w_compact_curvature_interferometer_from,
+        run = get_run(
             numba.curvature_matrix_via_w_compact_from,
             data_dict,
         )
@@ -908,7 +863,7 @@ class TestCurvatureMatrix:
         np.testing.assert_allclose(res, ref.ref["curvature_matrix_via_w_tilde_from"], rtol=RTOL)
 
     @pytest.mark.benchmark
-    def test_curvature_matrix_compact_sparse_mapping_matrix_numba(self, data_bundle, benchmark):
+    def test_curvature_matrix_via_w_tilde_from_numba_compact_sparse_direct(self, data_bundle, benchmark):
         data, ref, _ = data_bundle
         data_dict = data.dict() | {
             "grid_size": data.N,
@@ -916,11 +871,10 @@ class TestCurvatureMatrix:
             "pixels": data.S,
         }
 
-        test = "curvature_matrix"
+        test = "curvature_matrix_via_w_tilde_from"
         benchmark.group = f"{test}_{type(data).__name__}"
 
-        run = get_run_composed_from(
-            numba.w_compact_curvature_interferometer_from,
+        run = get_run(
             numba.curvature_matrix_via_w_compact_sparse_mapping_matrix_direct_from,
             data_dict,
         )
@@ -928,7 +882,7 @@ class TestCurvatureMatrix:
         np.testing.assert_allclose(res, ref.ref["curvature_matrix_via_w_tilde_from"], rtol=RTOL)
 
     @pytest.mark.benchmark
-    def test_curvature_matrix_compact_sparse_mapping_matrix_in_2matmul_numba(self, data_bundle, benchmark):
+    def test_curvature_matrix_via_w_tilde_from_numba_compact_sparse(self, data_bundle, benchmark):
         data, ref, _ = data_bundle
         data_dict = data.dict() | {
             "grid_size": data.N,
@@ -936,11 +890,10 @@ class TestCurvatureMatrix:
             "pixels": data.S,
         }
 
-        test = "curvature_matrix"
+        test = "curvature_matrix_via_w_tilde_from"
         benchmark.group = f"{test}_{type(data).__name__}"
 
-        run = get_run_composed_from(
-            numba.w_compact_curvature_interferometer_from,
+        run = get_run(
             numba.curvature_matrix_via_w_compact_sparse_mapping_matrix_from,
             data_dict,
         )
@@ -948,7 +901,7 @@ class TestCurvatureMatrix:
         np.testing.assert_allclose(res, ref.ref["curvature_matrix_via_w_tilde_from"], rtol=RTOL)
 
     @pytest.mark.benchmark
-    def test_curvature_matrix_compact_sparse_mapping_matrix_in_2matmul_jax(self, data_bundle, benchmark):
+    def test_curvature_matrix_via_w_tilde_from_jax_compact_sparse(self, data_bundle, benchmark):
         data, ref, data_dict_jax = data_bundle
         data_dict = data_dict_jax | {
             "pixels": data.S,
@@ -956,11 +909,10 @@ class TestCurvatureMatrix:
             "pixel_scale": data.pixel_scale,
         }
 
-        test = "curvature_matrix"
+        test = "curvature_matrix_via_w_tilde_from"
         benchmark.group = f"{test}_{type(data).__name__}"
 
-        run = get_run_composed_from(
-            jax.w_compact_curvature_interferometer_from,
+        run = get_run(
             jax.curvature_matrix_via_w_compact_sparse_mapping_matrix_from,
             data_dict,
             jax=True,
@@ -969,18 +921,17 @@ class TestCurvatureMatrix:
         np.testing.assert_allclose(res, ref.ref["curvature_matrix_via_w_tilde_from"], rtol=RTOL)
 
     @pytest.mark.benchmark
-    def test_curvature_matrix_compact_jax(self, data_bundle, benchmark):
+    def test_curvature_matrix_via_w_tilde_from_jax_compact(self, data_bundle, benchmark):
         data, ref, data_dict_jax = data_bundle
         data_dict = data_dict_jax | {
             "grid_size": data.N,
             "pixel_scale": data.pixel_scale,
         }
 
-        test = "curvature_matrix"
+        test = "curvature_matrix_via_w_tilde_from"
         benchmark.group = f"{test}_{type(data).__name__}"
 
-        run = get_run_composed_from(
-            jax.w_compact_curvature_interferometer_from,
+        run = get_run(
             jax.curvature_matrix_via_w_compact_from,
             data_dict,
             jax=True,
@@ -989,7 +940,7 @@ class TestCurvatureMatrix:
         np.testing.assert_allclose(res, ref.ref["curvature_matrix_via_w_tilde_from"], rtol=RTOL)
 
     @pytest.mark.benchmark
-    def test_curvature_matrix_compact_jax_BCOO(self, data_bundle, benchmark):
+    def test_curvature_matrix_via_w_tilde_from_jax_compact_BCOO(self, data_bundle, benchmark):
         data, ref, data_dict_jax = data_bundle
         data_dict = data_dict_jax | {
             "grid_size": data.N,
@@ -997,11 +948,10 @@ class TestCurvatureMatrix:
             "mapping_matrix": data_dict_jax["mapping_matrix_BCOO"],
         }
 
-        test = "curvature_matrix"
+        test = "curvature_matrix_via_w_tilde_from"
         benchmark.group = f"{test}_{type(data).__name__}"
 
-        run = get_run_composed_from(
-            jax.w_compact_curvature_interferometer_from,
+        run = get_run(
             jax.curvature_matrix_via_w_compact_from,
             data_dict,
             jax=True,
