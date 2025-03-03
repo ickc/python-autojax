@@ -452,7 +452,7 @@ def sparse_mapping_matrix_transpose_matmul(
         t_m_s1 = pix_weights_for_sub_slim_index
 
         # (S1, S2)
-        return jnp.zeros((S1, S2)).at[s1, :].add(t_m_s1.reshape(-1, 1) * Ω, mode="drop", unique_indices=False)
+        return jnp.zeros((S1, S2)).at[s1, :].add(t_m_s1.reshape(-1, 1) * Ω, mode="drop", unique_indices=True)
 
     def f_scan(
         sum_: np.ndarray[tuple[int, int], np.float64],
