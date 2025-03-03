@@ -16,7 +16,8 @@ def get_callable_functions(module):
     return {
         name: attr
         for name in dir(module)
-        if callable(attr := getattr(module, name)) and not (name.startswith("_") or inspect.isclass(attr) or inspect.ismodule(attr))
+        if callable(attr := getattr(module, name))
+        and not (name.startswith("_") or inspect.isclass(attr) or inspect.ismodule(attr))
     }
 
 
