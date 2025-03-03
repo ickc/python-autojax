@@ -689,10 +689,66 @@ class TestWTilde:
     The test names are a bit strange, but is designed to be filtered like this:
 
         pytest -m benchmark -k w_tilde_curvature_interferometer_from
+
+    This compares
+
+    1. direct computation of ``w_tilde``
+    2. (prefixed by ``_compact``/``_preload``) compute ``w_tilde`` on in the preload/compact form
+    3. (prefixed by ``_expanded``) compute ``w_tilde`` as above and then expand fully
+
+    (1) and (3) should be compared if ``w_tilde`` is needed in the full form.
+    (1) and (2) should be compared if ``w_tilde`` is needed regardless of the form.
     """
 
     @pytest.mark.benchmark
-    def test_w_tilde_curvature_interferometer_from_preload_original(self, data_bundle, benchmark):
+    def test_w_tilde_curvature_interferometer_original_preload(self, data_bundle, benchmark):
+        data, ref, _ = data_bundle
+        data_dict = data.dict()
+
+        test = "w_tilde_curvature_interferometer_from"
+        benchmark.group = f"{test}_{type(data).__name__}"
+        run = get_run(
+            original.w_tilde_curvature_preload_interferometer_from,
+            data_dict,
+        )
+        benchmark(run)
+
+    @pytest.mark.benchmark
+    def test_w_tilde_curvature_interferometer_from_numba_compact(self, data_bundle, benchmark):
+        data, ref, _ = data_bundle
+        data_dict = data.dict() | {
+            "grid_size": data.N,
+            "pixel_scale": data.pixel_scale,
+        }
+
+        test = "w_tilde_curvature_interferometer_from"
+        benchmark.group = f"{test}_{type(data).__name__}"
+        run = get_run(
+            numba.w_compact_curvature_interferometer_from,
+            data_dict,
+        )
+        benchmark(run)
+
+    @pytest.mark.benchmark
+    def test_w_tilde_curvature_interferometer_from_jax_compact(self, data_bundle, benchmark):
+        data, ref, data_dict_jax = data_bundle
+        data_dict = data_dict_jax | {
+            "grid_size": data.N,
+            "pixel_scale": data.pixel_scale,
+        }
+
+        test = "w_tilde_curvature_interferometer_from"
+        benchmark.group = f"{test}_{type(data).__name__}"
+
+        run = get_run(
+            jax.w_compact_curvature_interferometer_from,
+            data_dict,
+            jax=True,
+        )
+        benchmark(run)
+
+    @pytest.mark.benchmark
+    def test_w_tilde_curvature_interferometer_from_original_preload_expanded(self, data_bundle, benchmark):
         data, ref, _ = data_bundle
         data_dict = data.dict()
 
@@ -707,7 +763,7 @@ class TestWTilde:
         np.testing.assert_allclose(res, ref.ref["w_tilde_curvature_interferometer_from"], rtol=RTOL)
 
     @pytest.mark.benchmark
-    def test_w_tilde_curvature_interferometer_from_compact_numba(self, data_bundle, benchmark):
+    def test_w_tilde_curvature_interferometer_from_numba_compact_expanded(self, data_bundle, benchmark):
         data, ref, _ = data_bundle
         data_dict = data.dict() | {
             "grid_size": data.N,
@@ -725,7 +781,7 @@ class TestWTilde:
         np.testing.assert_allclose(res, ref.ref["w_tilde_curvature_interferometer_from"], rtol=RTOL)
 
     @pytest.mark.benchmark
-    def test_w_tilde_curvature_interferometer_from_compact_jax(self, data_bundle, benchmark):
+    def test_w_tilde_curvature_interferometer_from_jax_compact_expanded(self, data_bundle, benchmark):
         data, ref, data_dict_jax = data_bundle
         data_dict = data_dict_jax | {
             "grid_size": data.N,
