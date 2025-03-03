@@ -702,7 +702,7 @@ class TestWTilde:
 
     @pytest.mark.benchmark
     def test_w_tilde_curvature_interferometer_original_preload(self, data_bundle, benchmark):
-        data, ref, _ = data_bundle
+        data, _, _ = data_bundle
         data_dict = data.dict()
 
         test = "w_tilde_curvature_interferometer_from"
@@ -715,7 +715,7 @@ class TestWTilde:
 
     @pytest.mark.benchmark
     def test_w_tilde_curvature_interferometer_from_numba_compact(self, data_bundle, benchmark):
-        data, ref, _ = data_bundle
+        data, _, _ = data_bundle
         data_dict = data.dict() | {
             "grid_size": data.N,
             "pixel_scale": data.pixel_scale,
@@ -731,7 +731,7 @@ class TestWTilde:
 
     @pytest.mark.benchmark
     def test_w_tilde_curvature_interferometer_from_jax_compact(self, data_bundle, benchmark):
-        data, ref, data_dict_jax = data_bundle
+        data, _, data_dict_jax = data_bundle
         data_dict = data_dict_jax | {
             "grid_size": data.N,
             "pixel_scale": data.pixel_scale,
