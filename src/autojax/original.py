@@ -798,7 +798,7 @@ def noise_normalization_complex_from(noise_map: np.ndarray) -> float:
     return noise_normalization_real + noise_normalization_imag
 
 
-def log_likelihood_function(
+def log_likelihood_function_via_w_tilde_from(
     dirty_image: np.ndarray[tuple[int], np.float64],
     data: np.ndarray[tuple[int], np.complex128],
     noise_map: np.ndarray[tuple[int], np.complex128],
@@ -900,7 +900,7 @@ def log_likelihood_function(
     )
 
 
-def log_likelihood_function_via_preload_method(
+def log_likelihood_function_via_w_tilde_preload_from(
     dirty_image: np.ndarray[tuple[int], np.float64],
     data: np.ndarray[tuple[int], np.complex128],
     noise_map: np.ndarray[tuple[int], np.complex128],

@@ -730,12 +730,107 @@ def noise_normalization_complex_from(
 
 
 @numba.jit(
+    "f8(f8[::1], c16[::1], c16[::1], f8[:, ::1], f8[:, ::1], i8[:, ::1], i8[::1])",
+    nopython=True,
+    nogil=True,
+    parallel=True,
+)
+def log_likelihood_function_via_w_tilde_from(
+    dirty_image: np.ndarray[tuple[int], np.float64],
+    data: np.ndarray[tuple[int], np.complex128],
+    noise_map: np.ndarray[tuple[int], np.complex128],
+    w_tilde: np.ndarray[tuple[int, int], np.float64],
+    mapping_matrix: np.ndarray[tuple[int, int], np.float64],
+    neighbors: np.ndarray[tuple[int, int], np.int64],
+    neighbors_sizes: np.ndarray[tuple[int], np.int64],
+) -> float:
+    """Calculates the log likelihood of interferometer data given a model.
+
+    This function combines several steps:
+    1. Calculates noise normalization from the complex noise map
+    2. Computes the curvature matrix using w_tilde and mapping matrix
+    3. Creates a regularization matrix using constant regularization
+    4. Solves for the reconstruction allowing positive and negative values
+    5. Combines terms to compute the final log likelihood
+
+    Parameters
+    ----------
+    dirty_image : ndarray, shape (M,), dtype=float64
+        The dirty image used to compute the data vector
+    data : ndarray, shape (K,), dtype=complex128
+        The complex interferometer data being fitted
+    noise_map : ndarray, shape (K,), dtype=complex128
+        The complex noise map of the data
+    uv_wavelengths : ndarray, shape (K, 2), dtype=float64
+        The wavelengths of the coordinates in the uv-plane for the interferometer dataset
+    grid_radians_slim : ndarray, shape (M, 2), dtype=float64
+        The 1D (y,x) grid of coordinates in radians corresponding to real-space mask
+    mapping_matrix : ndarray, shape (M, S), dtype=float64
+        Matrix representing mappings between sub-grid pixels and pixelization pixels
+    neighbors : ndarray, shape (S, P), dtype=int64
+        Array providing indices of neighbors for each pixel
+    neighbors_sizes : ndarray, shape (S,), dtype=int64
+        Array giving number of neighbors for each pixel
+
+    Returns
+    -------
+    float
+        The log likelihood value of the model fit to the data
+
+    Notes
+    -----
+    The log likelihood calculation follows the formalism described in Warren & Dye 2003
+    (https://arxiv.org/pdf/astro-ph/0302587.pdf) with additional terms for interferometric data.
+
+    Typical sizes: (716 -> 70000 means 716 in the test dataset, but can go up to 70000 in science case)
+
+    M = number of image pixels in real_space_mask = 716 -> ~70000
+    K = number of visibilitiies = 190 -> ~1e7 (but this is only used to compute w_tilde otuside the likelihood function)
+    P = number of neighbors = 10 -> 3 (for Delaunay) but can go up to 300 for Voronoi (but we can just focus on delaunay for now)
+    S = number of source pixels (e.g. reconstruction.shape) = 716 -> 1000
+    """
+    coefficient = 1.0
+
+    noise_normalization: float = noise_normalization_complex_from(noise_map)
+
+    # (S, S)
+    curvature_matrix = curvature_matrix_via_w_tilde_from(w_tilde, mapping_matrix)
+
+    # (S, S)
+    regularization_matrix = constant_regularization_matrix_from(
+        coefficient,
+        neighbors,
+        neighbors_sizes,
+    )
+    # (S, S)
+    curvature_reg_matrix = curvature_matrix + regularization_matrix
+    # (S,)
+    data_vector = data_vector_from(mapping_matrix, dirty_image)
+    # (S,)
+    reconstruction = reconstruction_positive_negative_from(data_vector, curvature_reg_matrix)
+
+    # (2K,)
+    chi = data.view(np.float64) / noise_map.view(np.float64)
+    regularization_term_plus_chi_squared = chi @ chi - reconstruction @ data_vector
+
+    log_curvature_reg_matrix_term = np.linalg.slogdet(curvature_reg_matrix)[1]
+    log_regularization_matrix_term = np.linalg.slogdet(regularization_matrix)[1]
+
+    return -0.5 * (
+        regularization_term_plus_chi_squared
+        + log_curvature_reg_matrix_term
+        - log_regularization_matrix_term
+        + noise_normalization
+    )
+
+
+@numba.jit(
     "f8(f8[::1], c16[::1], c16[::1], f8[:, ::1], i8[:, ::1], f8[:, ::1], i8[:, ::1], i8[::1])",
     nopython=True,
     nogil=True,
     parallel=True,
 )
-def log_likelihood_function(
+def log_likelihood_function_via_w_compact_from(
     dirty_image: np.ndarray[tuple[int], np.float64],
     data: np.ndarray[tuple[int], np.complex128],
     noise_map: np.ndarray[tuple[int], np.complex128],
