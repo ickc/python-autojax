@@ -57,6 +57,10 @@ def diff_module(mod1, mod2):
 
 
 def print_diff(mod1, mod2):
+    print("=" * 80)
+    print("Functions in original:")
+    for func_name in get_callable_functions(original):
+        print(f"  {func_name}")
     diff1, diff2, diff_sig = diff_module(mod1, mod2)
     mod1_name = mod1.__name__.split(".")[-1]
     mod2_name = mod2.__name__.split(".")[-1]
