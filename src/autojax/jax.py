@@ -421,12 +421,20 @@ def sparse_mapping_matrix_transpose_matmul(
 
     FLOP cost: 2M B S2, B = pix_size_for_sub_slim_index.mean(), B=3 for Delaunay.
     """
+    S1: int = pixels
+    S2 = matrix.shape[1]
+    OUT_OF_BOUND_IDX: int = S1
+    pix_indexes_for_sub_slim_index = jnp.where(
+        pix_indexes_for_sub_slim_index == -1,
+        OUT_OF_BOUND_IDX,
+        pix_indexes_for_sub_slim_index,
+    )
 
     def f_m(
+        carry: np.ndarray[tuple[int, int], np.float64],
         matrix: np.ndarray[tuple[int], np.float64],
         pix_indexes_for_sub_slim_index: np.ndarray[tuple[int], np.int64],
         pix_weights_for_sub_slim_index: np.ndarray[np.ndarray[tuple[int], np.float64]],
-        pixels: int,
     ) -> np.ndarray[tuple[int, int], np.float64]:
         """Calculate T^T @ ``matrix`` using the sparse mapping matrix representation.
 
@@ -442,20 +450,14 @@ def sparse_mapping_matrix_transpose_matmul(
         """
         # (S2,)
         Ω = matrix
-
-        S1: int = pixels
-        S2 = Ω.shape[0]
-        OUT_OF_BOUND_IDX: int = S1
-
         # (B,)
-        s1 = jnp.where(pix_indexes_for_sub_slim_index == -1, OUT_OF_BOUND_IDX, pix_indexes_for_sub_slim_index)
+        s1 = pix_indexes_for_sub_slim_index
         t_m_s1 = pix_weights_for_sub_slim_index
-
         # (S1, S2)
-        return jnp.zeros((S1, S2)).at[s1, :].add(t_m_s1.reshape(-1, 1) * Ω, mode="drop", unique_indices=True)
+        return carry.at[s1, :].add(t_m_s1.reshape(-1, 1) * Ω, mode="drop", unique_indices=True)
 
     def f_scan(
-        sum_: np.ndarray[tuple[int, int], np.float64],
+        carry: np.ndarray[tuple[int, int], np.float64],
         args: tuple[
             np.ndarray[tuple[int], np.float64],
             np.ndarray[tuple[int], np.int64],
@@ -463,11 +465,11 @@ def sparse_mapping_matrix_transpose_matmul(
         ],
     ) -> tuple[np.ndarray[tuple[int, int], np.float64], None]:
         matrix, pix_indexes_for_sub_slim_index, pix_weights_for_sub_slim_index = args
-        return sum_ + f_m(matrix, pix_indexes_for_sub_slim_index, pix_weights_for_sub_slim_index, pixels), None
+        return f_m(carry, matrix, pix_indexes_for_sub_slim_index, pix_weights_for_sub_slim_index), None
 
     res, _ = jax.lax.scan(
         f_scan,
-        jnp.zeros((pixels, matrix.shape[1])),
+        jnp.zeros((S1, S2)),
         (
             matrix,
             pix_indexes_for_sub_slim_index,
