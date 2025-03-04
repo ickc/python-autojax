@@ -4,6 +4,8 @@ dist/
 docs/api/
 *.ipynb
 root.log
+*.svg
+*.csv
 
 .benchmarks/
 
