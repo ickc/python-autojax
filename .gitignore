@@ -8,6 +8,7 @@ root.log
 *.csv
 
 .benchmarks/
+batch/*.sh
 
 # pixi environments
 .pixi
