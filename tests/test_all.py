@@ -631,7 +631,7 @@ class TestBenchJax(metaclass=AutoTestMeta):
 # special case
 
 
-class TestWTilde:
+class TestBenchWTilde:
     """Compute w_tilde via various methods.
 
     This adds on top of existing benchmarks to compare the performance of the preload method.
@@ -739,7 +739,7 @@ class TestWTilde:
         np.testing.assert_allclose(res, ref.ref["w_tilde_curvature_interferometer_from"], rtol=RTOL)
 
 
-class TestCurvatureMatrix:
+class TestBenchCurvatureMatrix:
     """Compute curvature matrix via various methods.
 
     The input w can be w_tilde, preload, or compact. w_tilde is allowed
