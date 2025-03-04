@@ -10,7 +10,7 @@ import numpy as np
 import pytest
 from jax import numpy as jnp
 
-from autojax import jax, numba, original
+from . import jax, numba, original
 
 RTOL: float = 2e-6
 
