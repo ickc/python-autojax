@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 import jax
 import jax.numpy as jnp
+from jax.experimental import sparse
 
 if TYPE_CHECKING:
     import numpy as np
@@ -608,11 +609,11 @@ def mapping_matrix_from(
     total_mask_pixels
         The number of datas pixels in the observed datas and thus on the grid.
     """
-    M = pix_indexes_for_sub_slim_index.shape[0]
+    M, B = pix_indexes_for_sub_slim_index.shape
     S = pixels
     # as the mapping matrix is M by S, S would be out of bound (any out of bound index would do)
     OUT_OF_BOUND_IDX = S
-    B = pix_indexes_for_sub_slim_index.shape[1]
+
     pix_indexes_for_sub_slim_index = pix_indexes_for_sub_slim_index.flatten()
     pix_indexes_for_sub_slim_index = jnp.where(
         pix_indexes_for_sub_slim_index == -1,
@@ -625,6 +626,104 @@ def mapping_matrix_from(
         jnp.zeros((M, S)).at[I_IDX, pix_indexes_for_sub_slim_index]
         # unique indices should be guranteed by pix_indexes_for_sub_slim_index-spec
         .set(pix_weights_for_sub_slim_index.flatten(), mode="drop", unique_indices=True)
+    )
+
+
+@partial(jax.jit, static_argnums=2)
+def mapping_matrix_from_BCOO(
+    pix_indexes_for_sub_slim_index: np.ndarray[tuple[int, int], np.int64],
+    pix_weights_for_sub_slim_index: np.ndarray[np.ndarray[tuple[int, int], np.float64]],
+    pixels: int,
+) -> sparse.BCOO[tuple[int, int], np.float64]:
+    """
+    Returns the mapping matrix, which is a matrix representing the mapping between every unmasked sub-pixel of the data
+    and the pixels of a pixelization. Non-zero entries signify a mapping, whereas zeros signify no mapping.
+
+    For example, if the data has 5 unmasked pixels (with `sub_size=1` so there are not sub-pixels) and the pixelization
+    3 pixels, with the following mappings:
+
+    data pixel 0 -> pixelization pixel 0
+    data pixel 1 -> pixelization pixel 0
+    data pixel 2 -> pixelization pixel 1
+    data pixel 3 -> pixelization pixel 1
+    data pixel 4 -> pixelization pixel 2
+
+    The mapping matrix (which is of dimensions [data_pixels, pixelization_pixels]) would appear as follows:
+
+    [1, 0, 0] [0->0]
+    [1, 0, 0] [1->0]
+    [0, 1, 0] [2->1]
+    [0, 1, 0] [3->1]
+    [0, 0, 1] [4->2]
+
+    The mapping matrix is actually built using the sub-grid of the grid, whereby each pixel is divided into a grid of
+    sub-pixels which are all paired to pixels in the pixelization. The entries in the mapping matrix now become
+    fractional values dependent on the sub-pixel sizes.
+
+    For example, for a 2x2 sub-pixels in each pixel means the fractional value is 1.0/(2.0^2) = 0.25, if we have the
+    following mappings:
+
+    data pixel 0 -> data sub pixel 0 -> pixelization pixel 0
+    data pixel 0 -> data sub pixel 1 -> pixelization pixel 1
+    data pixel 0 -> data sub pixel 2 -> pixelization pixel 1
+    data pixel 0 -> data sub pixel 3 -> pixelization pixel 1
+    data pixel 1 -> data sub pixel 0 -> pixelization pixel 1
+    data pixel 1 -> data sub pixel 1 -> pixelization pixel 1
+    data pixel 1 -> data sub pixel 2 -> pixelization pixel 1
+    data pixel 1 -> data sub pixel 3 -> pixelization pixel 1
+    data pixel 2 -> data sub pixel 0 -> pixelization pixel 2
+    data pixel 2 -> data sub pixel 1 -> pixelization pixel 2
+    data pixel 2 -> data sub pixel 2 -> pixelization pixel 3
+    data pixel 2 -> data sub pixel 3 -> pixelization pixel 3
+
+    The mapping matrix (which is still of dimensions [data_pixels, pixelization_pixels]) appears as follows:
+
+    [0.25, 0.75, 0.0, 0.0] [1 sub-pixel maps to pixel 0, 3 map to pixel 1]
+    [ 0.0,  1.0, 0.0, 0.0] [All sub-pixels map to pixel 1]
+    [ 0.0,  0.0, 0.5, 0.5] [2 sub-pixels map to pixel 2, 2 map to pixel 3]
+
+    For certain pixelizations each data sub-pixel maps to multiple pixelization pixels in a weighted fashion, for
+    example a Delaunay pixelization where there are 3 mappings per sub-pixel whose weights are determined via a
+    nearest neighbor interpolation scheme.
+
+    In this case, each mapping value is multiplied by this interpolation weight (which are in the array
+    `pix_weights_for_sub_slim_index`) when the mapping matrix is constructed.
+
+    This implementation returns a BCOO sparse representation of the mapping matrix,
+    which utilizes an undocumented property that out of bound indices are dropped.
+
+    Parameters
+    ----------
+    pix_indexes_for_sub_slim_index : ndarray, shape (M, B), dtype=int64
+        The mappings from a data sub-pixel index to a pixelization pixel index.
+    pix_weights_for_sub_slim_index : ndarray, shape (M, B), dtype=float64
+        The weights of the mappings of every data sub pixel and pixelization pixel.
+    pixels
+        The number of pixels in the pixelization.
+    total_mask_pixels
+        The number of datas pixels in the observed datas and thus on the grid.
+    """
+    M, B = pix_indexes_for_sub_slim_index.shape
+    S = pixels
+    # as the mapping matrix is M by S, S would be out of bound (any out of bound index would do)
+    OUT_OF_BOUND_IDX = S
+
+    pix_indexes_for_sub_slim_index = pix_indexes_for_sub_slim_index.flatten()
+    pix_indexes_for_sub_slim_index = jnp.where(
+        pix_indexes_for_sub_slim_index == -1,
+        OUT_OF_BOUND_IDX,
+        pix_indexes_for_sub_slim_index,
+    )
+
+    I_IDX = jnp.repeat(jnp.arange(M), B)
+
+    indices = jnp.column_stack((I_IDX, pix_indexes_for_sub_slim_index))
+    data = pix_weights_for_sub_slim_index.flatten()
+    return sparse.BCOO(
+        (data, indices),
+        shape=(M, S),
+        indices_sorted=True,
+        unique_indices=True,
     )
 
 
