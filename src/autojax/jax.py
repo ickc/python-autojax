@@ -615,7 +615,9 @@ def mapping_matrix_from(
     B = pix_indexes_for_sub_slim_index.shape[1]
     pix_indexes_for_sub_slim_index = pix_indexes_for_sub_slim_index.flatten()
     pix_indexes_for_sub_slim_index = jnp.where(
-        pix_indexes_for_sub_slim_index == -1, OUT_OF_BOUND_IDX, pix_indexes_for_sub_slim_index
+        pix_indexes_for_sub_slim_index == -1,
+        OUT_OF_BOUND_IDX,
+        pix_indexes_for_sub_slim_index,
     )
 
     I_IDX = jnp.repeat(jnp.arange(M), B)
