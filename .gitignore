@@ -5,6 +5,8 @@ docs/api/
 *.ipynb
 root.log
 
+.benchmarks/
+
 # pixi environments
 .pixi
 *.egg-info
