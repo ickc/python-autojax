@@ -306,7 +306,7 @@ class Data:
 class DataLoaded(Data):
     """Load data from file."""
 
-    path: Path = Path(__file__).parent / "data.npz"
+    path: Path = Path(__file__).parent.parent.parent / "dataset" / "data.npz"
 
     def __post_init__(self):
         self._data = np.load(self.path)
