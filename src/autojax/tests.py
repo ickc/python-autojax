@@ -12,6 +12,12 @@ from jax import numpy as jnp
 
 from . import jax, numba, original
 
+AUTOJAX_GRID_SIZE: int = 30
+AUTOJAX_N_MAPPING_NEIGHBORS: int = 3  # Delaunay
+AUTOJAX_DATA_SIZE: int = 1024
+AUTOJAX_NEIGHBOR_SIZE: int = 32
+AUTOJAX_SRC_IMG_SIZE: int = 256
+
 RTOL: float = 2e-6
 
 tests_numba: set[str] = {
@@ -56,9 +62,9 @@ class Data:
 
     pixel_scale: float = 0.2
     _centre: float = 0.0
-    N_: int = 30
+    N_: int = AUTOJAX_GRID_SIZE
     coefficient: float = 1.0
-    B: int = 3  # Delaunay
+    B: int = AUTOJAX_N_MAPPING_NEIGHBORS
 
     def dict(self) -> dict:
         return {
@@ -364,9 +370,9 @@ class DataLoaded(Data):
 class DataGenerated(Data):
     """Generate data for testing."""
 
-    K_: int = 1024
-    P_: int = 32
-    S_: int = 256
+    K_: int = AUTOJAX_DATA_SIZE
+    P_: int = AUTOJAX_NEIGHBOR_SIZE
+    S_: int = AUTOJAX_SRC_IMG_SIZE
 
     @property
     def K(self) -> int:
