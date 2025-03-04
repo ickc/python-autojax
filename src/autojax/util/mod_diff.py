@@ -1,6 +1,6 @@
 import inspect
 
-from autojax import jax, numba, original
+from .. import jax, numba, original
 
 
 def get_callable_functions(module):
