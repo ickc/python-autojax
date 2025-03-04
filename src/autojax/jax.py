@@ -510,6 +510,12 @@ def curvature_matrix_via_w_compact_sparse_mapping_matrix_from_BCOO(
     return mapping_matrix.T @ WT
 
 
+# for benchmark, as this is the function in closest correspondence to the original function
+curvature_matrix_via_w_tilde_curvature_preload_interferometer_from = (
+    curvature_matrix_via_w_compact_sparse_mapping_matrix_from_BCOO
+)
+
+
 @jax.jit
 def w_tilde_via_preload_from(
     w_tilde_preload: np.ndarray[tuple[int, int], np.float64],

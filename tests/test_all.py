@@ -14,30 +14,16 @@ from autojax import jax, numba, original
 
 RTOL: float = 2e-6
 
-tests_generated: list[str] = [
-    "constant_regularization_matrix_from",
-    # "curvature_matrix_via_w_tilde_curvature_preload_interferometer_from",
-    "curvature_matrix_via_w_tilde_from",
-    "data_vector_from",
-    "log_likelihood_function_via_w_compact_from",
-    "log_likelihood_function_via_w_tilde_from",
-    "mapping_matrix_from",
-    # "mask_2d_centres_from",
-    "mask_2d_circular_from",
-    "noise_normalization_complex_from",
-    "reconstruction_positive_negative_from",
-    "w_tilde_curvature_interferometer_from",
-    # "w_tilde_curvature_preload_interferometer_from",
-    "w_tilde_data_interferometer_from",
-    "w_tilde_via_preload_from",
-]
-tests_loaded: list[str] = tests_generated + [
-    "w_tilde_via_preload_from",
-]
+tests_numba: set[str] = {
+    "curvature_matrix_via_w_compact_sparse_mapping_matrix_from",
+    "sparse_mapping_matrix_transpose_matmul",
+    "w_compact_curvature_interferometer_from",
+    "w_tilde_via_compact_from",
+}
 
-
-tests_all: list[str] = [
+tests: list[str] = [
     "constant_regularization_matrix_from",
+    "curvature_matrix_via_w_compact_sparse_mapping_matrix_from",
     "curvature_matrix_via_w_tilde_curvature_preload_interferometer_from",
     "curvature_matrix_via_w_tilde_from",
     "data_vector_from",
@@ -48,9 +34,12 @@ tests_all: list[str] = [
     "mask_2d_circular_from",
     "noise_normalization_complex_from",
     "reconstruction_positive_negative_from",
+    "sparse_mapping_matrix_transpose_matmul",
+    "w_compact_curvature_interferometer_from",
     "w_tilde_curvature_interferometer_from",
     "w_tilde_curvature_preload_interferometer_from",
     "w_tilde_data_interferometer_from",
+    "w_tilde_via_compact_from",
     "w_tilde_via_preload_from",
 ]
 
@@ -84,6 +73,7 @@ class Data:
             "grid_radians_slim": self.grid_radians_slim,
             "grid_size": self.N,
             "mapping_matrix": self.mapping_matrix,
+            "matrix": self.mapping_matrix,  # for unit tests
             "native_index_for_slim_index": self.native_index_for_slim_index,
             "neighbors_sizes": self.neighbors_sizes,
             "neighbors": self.neighbors,
@@ -494,16 +484,15 @@ class Reference:
     """Generate reference values for testing."""
 
     data: Data
-    tests: tuple[str, ...]
-    mod = original
 
     @cached_property
     def ref(self) -> dict:
         data_dict = self.data.dict()
 
         res = {}
-        for test in self.tests:
-            func = getattr(self.mod, test)
+        for test in tests:
+            mod = numba if test in tests_numba else original
+            func = getattr(mod, test)
             sig = inspect.signature(func)
             args = [data_dict[key] for key in sig.parameters]
             res[test] = func(*args)
@@ -517,8 +506,7 @@ class Reference:
 def data_bundle(request):
     Data = request.param
     data = Data()
-    tests = tests_generated if Data is DataGenerated else tests_loaded
-    ref = Reference(data, tests)
+    ref = Reference(data)
     data_dict_jax = {k: jnp.array(v) if isinstance(v, np.ndarray) else v for k, v in data.dict().items()}
     return data, ref, data_dict_jax
 
@@ -578,14 +566,16 @@ class AutoTestMeta(type):
                 @pytest.mark.benchmark
                 def test_method(self, data_bundle, benchmark):
                     data, ref, data_dict_jax = data_bundle
-                    if test not in ref.tests:
-                        pytest.skip(f"Skip {test} from {type(data).__name__}")
+                    try:
+                        func = getattr(self.mod, test)
+                    except AttributeError:
+                        mod_name = self.mod.__name__.split(".")[-1]
+                        pytest.skip(f"{mod_name}.{test} not implemented")
 
                     benchmark.group = f"{test}_{type(data).__name__}"
 
                     data_dict = data_dict_jax if new_cls.mod == jax else data.dict()
                     ref_dict = ref.ref
-                    func = getattr(self.mod, test)
                     run = get_run(func, data_dict, new_cls.mod == jax)
                     res = benchmark(run)
                     np.testing.assert_allclose(res, ref_dict[test], rtol=RTOL)
@@ -595,12 +585,14 @@ class AutoTestMeta(type):
                 @pytest.mark.unittest
                 def test_method(self, data_bundle):
                     data, ref, data_dict_jax = data_bundle
-                    if test not in ref.tests:
-                        pytest.skip(f"Skip {test} from {type(data).__name__}")
+                    try:
+                        func = getattr(self.mod, test)
+                    except AttributeError:
+                        mod_name = self.mod.__name__.split(".")[-1]
+                        pytest.skip(f"{mod_name}.{test} not implemented")
 
                     data_dict = data_dict_jax if new_cls.mod == jax else data.dict()
                     ref_dict = ref.ref
-                    func = getattr(self.mod, test)
                     run = get_run(func, data_dict)
                     res = run()
                     np.testing.assert_allclose(res, ref_dict[test], rtol=RTOL)
@@ -608,7 +600,7 @@ class AutoTestMeta(type):
             test_method.__name__ = f"test_{test}_{new_cls.mod.__name__.split('.')[-1]}"
             return test_method
 
-        for test_name in tests_all:
+        for test_name in tests:
             method = create_test(test_name)
             setattr(new_cls, method.__name__, method)
 
