@@ -803,7 +803,11 @@ def log_likelihood_function_via_w_tilde_from(
     data: np.ndarray[tuple[int], np.complex128],
     noise_map: np.ndarray[tuple[int], np.complex128],
     w_tilde: np.ndarray[tuple[int, int], np.float64],
-    mapping_matrix: np.ndarray[tuple[int, int], np.float64],
+    pix_indexes_for_sub_slim_index: np.ndarray[tuple[int, int], np.int64],
+    pix_size_for_sub_slim_index: np.ndarray[np.ndarray[tuple[int], np.int64]],
+    pix_weights_for_sub_slim_index: np.ndarray[np.ndarray[tuple[int, int], np.float64]],
+    slim_index_for_sub_slim_index: np.ndarray[tuple[int], np.int64],
+    sub_fraction: np.ndarray[tuple[int], np.float64],
     neighbors: np.ndarray[tuple[int, int], np.int64],
     neighbors_sizes: np.ndarray[tuple[int], np.int64],
 ) -> float:
@@ -828,8 +832,16 @@ def log_likelihood_function_via_w_tilde_from(
         The wavelengths of the coordinates in the uv-plane for the interferometer dataset
     grid_radians_slim : ndarray, shape (M, 2), dtype=float64
         The 1D (y,x) grid of coordinates in radians corresponding to real-space mask
-    mapping_matrix : ndarray, shape (M, S), dtype=float64
-        Matrix representing mappings between sub-grid pixels and pixelization pixels
+    pix_indexes_for_sub_slim_index : ndarray, shape (M, 3), dtype=int64
+        The mappings from a data sub-pixel index to a pixelization pixel index.
+    pix_size_for_sub_slim_index : ndarray, shape (M,), dtype=int64
+        The number of mappings between each data sub pixel and pixelization pixel.
+    pix_weights_for_sub_slim_index : ndarray, shape (M, 3), dtype=float64
+        The weights of the mappings of every data sub pixel and pixelization pixel.
+    slim_index_for_sub_slim_index : ndarray, shape (M,), dtype=int64
+        The mappings between the data's sub slimmed indexes and the slimmed indexes on the non sub-sized indexes.
+    sub_fraction : ndarray, shape (M,), dtype=float64
+        The fractional area each sub-pixel takes up in an pixel.
     neighbors : ndarray, shape (S, P), dtype=int64
         Array providing indices of neighbors for each pixel
     neighbors_sizes : ndarray, shape (S,), dtype=int64
@@ -852,8 +864,19 @@ def log_likelihood_function_via_w_tilde_from(
     P = number of neighbors = 10 -> 3 (for Delaunay) but can go up to 300 for Voronoi (but we can just focus on delaunay for now)
     S = number of source pixels (e.g. reconstruction.shape) = 716 -> 1000
     """
+    M = dirty_image.size
+    S = neighbors_sizes.size
     coefficient = 1.0
 
+    mapping_matrix = mapping_matrix_from(
+        pix_indexes_for_sub_slim_index,
+        pix_size_for_sub_slim_index,
+        pix_weights_for_sub_slim_index,
+        S,
+        M,
+        slim_index_for_sub_slim_index,
+        sub_fraction,
+    )
     data_vector = data_vector_from(mapping_matrix, dirty_image)
     curvature_matrix = curvature_matrix_via_w_tilde_from(w_tilde, mapping_matrix)
     regularization_matrix = constant_regularization_matrix_from(
@@ -905,14 +928,14 @@ def log_likelihood_function_via_w_tilde_preload_from(
     data: np.ndarray[tuple[int], np.complex128],
     noise_map: np.ndarray[tuple[int], np.complex128],
     w_tilde_preload: np.ndarray[tuple[int, int], np.float64],
-    mapping_matrix: np.ndarray[tuple[int, int], np.float64],
+    pix_indexes_for_sub_slim_index: np.ndarray[tuple[int, int], np.int64],
+    pix_size_for_sub_slim_index: np.ndarray[np.ndarray[tuple[int], np.int64]],
+    pix_weights_for_sub_slim_index: np.ndarray[np.ndarray[tuple[int, int], np.float64]],
+    slim_index_for_sub_slim_index: np.ndarray[tuple[int], np.int64],
+    sub_fraction: np.ndarray[tuple[int], np.float64],
     neighbors: np.ndarray[tuple[int, int], np.int64],
     neighbors_sizes: np.ndarray[tuple[int], np.int64],
-    pix_indexes_for_sub_slim_index: np.ndarray[tuple[int, int], np.int64],
-    pix_size_for_sub_slim_index: np.ndarray[tuple[int], np.int64],
-    pix_weights_for_sub_slim_index: np.ndarray[tuple[int, int], np.float64],
     native_index_for_slim_index: np.ndarray[tuple[int, int], np.int64],
-    pix_pixels: int,
 ) -> float:
     """Calculates the log likelihood of interferometer data given a model.
 
@@ -939,23 +962,23 @@ def log_likelihood_function_via_w_tilde_preload_from(
         Fourier transformed is computed. N_PRIME >= N. E.g. N_PRIME = 100
     uv_wavelengths : ndarray, shape (K, 2), dtype=float64
         The wavelengths of the coordinates in the uv-plane for the interferometer dataset
-    mapping_matrix : ndarray, shape (M, S), dtype=float64
-        Matrix representing mappings between sub-grid pixels and pixelization pixels
-    neighbors : ndarray, shape (S, P), dtype=int64
-        Array providing indices of neighbors for each pixel
-    neighbors_sizes : ndarray, shape (S,), dtype=int64
-        Array giving number of neighbors for each pixel
     pix_indexes_for_sub_slim_index : ndarray, shape (M, 3), dtype=int64
-        The mappings from a data sub-pixel index to a pixelization's mesh pixel index.
+        The mappings from a data sub-pixel index to a pixelization pixel index.
     pix_size_for_sub_slim_index : ndarray, shape (M,), dtype=int64
         The number of mappings between each data sub pixel and pixelization pixel.
     pix_weights_for_sub_slim_index : ndarray, shape (M, 3), dtype=float64
         The weights of the mappings of every data sub pixel and pixelization pixel.
+    slim_index_for_sub_slim_index : ndarray, shape (M,), dtype=int64
+        The mappings between the data's sub slimmed indexes and the slimmed indexes on the non sub-sized indexes.
+    sub_fraction : ndarray, shape (M,), dtype=float64
+        The fractional area each sub-pixel takes up in an pixel.
+    neighbors : ndarray, shape (S, P), dtype=int64
+        Array providing indices of neighbors for each pixel
+    neighbors_sizes : ndarray, shape (S,), dtype=int64
+        Array giving number of neighbors for each pixel
     native_index_for_slim_index : ndarray, shape (M, 2), dtype=int64
         An array of shape [total_unmasked_pixels*sub_size] that maps every unmasked sub-pixel to its corresponding
         native 2D pixel using its (y,x) pixel indexes.
-    pix_pixels
-        The total number of pixels in the pixelization's mesh that reconstructs the data. pix_pixels = S.
 
     Returns
     -------
@@ -975,7 +998,19 @@ def log_likelihood_function_via_w_tilde_preload_from(
     P = number of neighbors = 10 -> 3 (for Delaunay) but can go up to 300 for Voronoi (but we can just focus on delaunay for now)
     S = number of source pixels (e.g. reconstruction.shape) = 716 -> 1000
     """
+    M = dirty_image.size
+    S = neighbors_sizes.size
     coefficient = 1.0
+
+    mapping_matrix = mapping_matrix_from(
+        pix_indexes_for_sub_slim_index,
+        pix_size_for_sub_slim_index,
+        pix_weights_for_sub_slim_index,
+        S,
+        M,
+        slim_index_for_sub_slim_index,
+        sub_fraction,
+    )
 
     data_vector = data_vector_from(mapping_matrix, dirty_image)
     curvature_matrix = curvature_matrix_via_w_tilde_curvature_preload_interferometer_from(
@@ -984,7 +1019,7 @@ def log_likelihood_function_via_w_tilde_preload_from(
         pix_size_for_sub_slim_index,
         pix_weights_for_sub_slim_index,
         native_index_for_slim_index,
-        pix_pixels,
+        S,
     )
     regularization_matrix = constant_regularization_matrix_from(
         coefficient,

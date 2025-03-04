@@ -435,16 +435,6 @@ def curvature_matrix_via_w_tilde_from(
     return mapping_matrix.T @ w_tilde @ mapping_matrix
 
 
-@numba.jit("f8[:, ::1](f8[:, ::1], i8[:, ::1], f8[:, ::1])", nopython=True, nogil=True, parallel=False)
-def curvature_matrix_via_w_compact_from(
-    w_compact: np.ndarray[tuple[int, int], np.float64],
-    native_index_for_slim_index: np.ndarray[tuple[int, int], np.int64],
-    mapping_matrix: np.ndarray[tuple[int, int], np.float64],
-) -> np.ndarray[tuple[int, int], np.float64]:
-    w_tilde = w_tilde_via_compact_from(w_compact, native_index_for_slim_index)
-    return curvature_matrix_via_w_tilde_from(w_tilde, mapping_matrix)
-
-
 @numba.jit("f8[:, ::1](f8[:, ::1], i8[:, ::1], i8[:, ::1], f8[:, ::1], i8)", nopython=True, nogil=True, parallel=False)
 def curvature_matrix_via_w_compact_sparse_mapping_matrix_direct_from(
     w_compact: np.ndarray[tuple[int, int], np.float64],
@@ -730,7 +720,7 @@ def noise_normalization_complex_from(
 
 
 @numba.jit(
-    "f8(f8[::1], c16[::1], c16[::1], f8[:, ::1], f8[:, ::1], i8[:, ::1], i8[::1])",
+    "f8(f8[::1], c16[::1], c16[::1], f8[:, ::1], i8[:, ::1], f8[:, ::1], i8[:, ::1], i8[::1])",
     nopython=True,
     nogil=True,
     parallel=True,
@@ -740,7 +730,8 @@ def log_likelihood_function_via_w_tilde_from(
     data: np.ndarray[tuple[int], np.complex128],
     noise_map: np.ndarray[tuple[int], np.complex128],
     w_tilde: np.ndarray[tuple[int, int], np.float64],
-    mapping_matrix: np.ndarray[tuple[int, int], np.float64],
+    pix_indexes_for_sub_slim_index: np.ndarray[tuple[int, int], np.int64],
+    pix_weights_for_sub_slim_index: np.ndarray[np.ndarray[tuple[int, int], np.float64]],
     neighbors: np.ndarray[tuple[int, int], np.int64],
     neighbors_sizes: np.ndarray[tuple[int], np.int64],
 ) -> float:
@@ -765,8 +756,10 @@ def log_likelihood_function_via_w_tilde_from(
         The wavelengths of the coordinates in the uv-plane for the interferometer dataset
     grid_radians_slim : ndarray, shape (M, 2), dtype=float64
         The 1D (y,x) grid of coordinates in radians corresponding to real-space mask
-    mapping_matrix : ndarray, shape (M, S), dtype=float64
-        Matrix representing mappings between sub-grid pixels and pixelization pixels
+    pix_indexes_for_sub_slim_index : ndarray, shape (M, B), dtype=int64
+        The mappings from a data sub-pixel index to a pixelization pixel index.
+    pix_weights_for_sub_slim_index : ndarray, shape (M, B), dtype=float64
+        The weights of the mappings of every data sub pixel and pixelization pixel.
     neighbors : ndarray, shape (S, P), dtype=int64
         Array providing indices of neighbors for each pixel
     neighbors_sizes : ndarray, shape (S,), dtype=int64
@@ -789,10 +782,17 @@ def log_likelihood_function_via_w_tilde_from(
     P = number of neighbors = 10 -> 3 (for Delaunay) but can go up to 300 for Voronoi (but we can just focus on delaunay for now)
     S = number of source pixels (e.g. reconstruction.shape) = 716 -> 1000
     """
+    S = neighbors_sizes.size
     coefficient = 1.0
 
     noise_normalization: float = noise_normalization_complex_from(noise_map)
 
+    # (M, S)
+    mapping_matrix = mapping_matrix_from(
+        pix_indexes_for_sub_slim_index,
+        pix_weights_for_sub_slim_index,
+        S,
+    )
     # (S, S)
     curvature_matrix = curvature_matrix_via_w_tilde_from(w_tilde, mapping_matrix)
 
@@ -825,7 +825,7 @@ def log_likelihood_function_via_w_tilde_from(
 
 
 @numba.jit(
-    "f8(f8[::1], c16[::1], c16[::1], f8[:, ::1], i8[:, ::1], f8[:, ::1], i8[:, ::1], i8[::1])",
+    "f8(f8[::1], c16[::1], c16[::1], f8[:, ::1], i8[:, ::1], i8[:, ::1], f8[:, ::1], i8[:, ::1], i8[::1])",
     nopython=True,
     nogil=True,
     parallel=True,
@@ -836,7 +836,8 @@ def log_likelihood_function_via_w_compact_from(
     noise_map: np.ndarray[tuple[int], np.complex128],
     w_compact: np.ndarray[tuple[int, int], np.float64],
     native_index_for_slim_index: np.ndarray[tuple[int, int], np.int64],
-    mapping_matrix: np.ndarray[tuple[int, int], np.float64],
+    pix_indexes_for_sub_slim_index: np.ndarray[tuple[int, int], np.int64],
+    pix_weights_for_sub_slim_index: np.ndarray[np.ndarray[tuple[int, int], np.float64]],
     neighbors: np.ndarray[tuple[int, int], np.int64],
     neighbors_sizes: np.ndarray[tuple[int], np.int64],
 ) -> float:
@@ -861,8 +862,10 @@ def log_likelihood_function_via_w_compact_from(
         The wavelengths of the coordinates in the uv-plane for the interferometer dataset
     grid_radians_slim : ndarray, shape (M, 2), dtype=float64
         The 1D (y,x) grid of coordinates in radians corresponding to real-space mask
-    mapping_matrix : ndarray, shape (M, S), dtype=float64
-        Matrix representing mappings between sub-grid pixels and pixelization pixels
+    pix_indexes_for_sub_slim_index : ndarray, shape (M, B), dtype=int64
+        The mappings from a data sub-pixel index to a pixelization pixel index.
+    pix_weights_for_sub_slim_index : ndarray, shape (M, B), dtype=float64
+        The weights of the mappings of every data sub pixel and pixelization pixel.
     neighbors : ndarray, shape (S, P), dtype=int64
         Array providing indices of neighbors for each pixel
     neighbors_sizes : ndarray, shape (S,), dtype=int64
@@ -885,12 +888,19 @@ def log_likelihood_function_via_w_compact_from(
     P = number of neighbors = 10 -> 3 (for Delaunay) but can go up to 300 for Voronoi (but we can just focus on delaunay for now)
     S = number of source pixels (e.g. reconstruction.shape) = 716 -> 1000
     """
+    S = neighbors_sizes.size
     coefficient = 1.0
 
     noise_normalization: float = noise_normalization_complex_from(noise_map)
 
     # (S, S)
-    curvature_matrix = curvature_matrix_via_w_compact_from(w_compact, native_index_for_slim_index, mapping_matrix)
+    curvature_matrix = curvature_matrix_via_w_compact_sparse_mapping_matrix_from(
+        w_compact,
+        native_index_for_slim_index,
+        pix_indexes_for_sub_slim_index,
+        pix_weights_for_sub_slim_index,
+        S,
+    )
 
     # (S, S)
     regularization_matrix = constant_regularization_matrix_from(
@@ -900,6 +910,12 @@ def log_likelihood_function_via_w_compact_from(
     )
     # (S, S)
     curvature_reg_matrix = curvature_matrix + regularization_matrix
+    # (M, S)
+    mapping_matrix = mapping_matrix_from(
+        pix_indexes_for_sub_slim_index,
+        pix_weights_for_sub_slim_index,
+        S,
+    )
     # (S,)
     data_vector = data_vector_from(mapping_matrix, dirty_image)
     # (S,)

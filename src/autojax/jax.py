@@ -302,37 +302,6 @@ def w_tilde_via_compact_from(
     return w_compact[p_ij_0, p_ij_1]
 
 
-@jax.jit
-def curvature_matrix_via_w_compact_from(
-    w_compact: np.ndarray[tuple[int, int], np.float64],
-    native_index_for_slim_index: np.ndarray[tuple[int, int], np.int64],
-    mapping_matrix: np.ndarray[tuple[int, int], np.float64],
-) -> np.ndarray[tuple[int, int], np.float64]:
-    """
-    Returns the curvature matrix `F` (see Warren & Dye 2003) from `w_tilde`.
-
-    The dimensions of `w_tilde` are [image_pixels, image_pixels], meaning that for datasets with many image pixels
-    this matrix can take up 10's of GB of memory. The calculation of the `curvature_matrix` via this function will
-    therefore be very slow, and the method `curvature_matrix_via_w_tilde_curvature_preload_imaging_from` should be used
-    instead.
-
-    Parameters
-    ----------
-    w_tilde : ndarray, shape (M, M), dtype=float64
-        A matrix of dimensions [image_pixels, image_pixels] that encodes the convolution or NUFFT of every image pixel
-        pair on the noise map.
-    mapping_matrix : ndarray, shape (M, S), dtype=float64
-        The matrix representing the mappings between sub-grid pixels and pixelization pixels.
-
-    Returns
-    -------
-    curvature_matrix : ndarray, shape (S, S), dtype=float64
-        The curvature matrix `F` (see Warren & Dye 2003).
-    """
-    w_tilde = w_tilde_via_compact_from(w_compact, native_index_for_slim_index)
-    return curvature_matrix_via_w_tilde_from(w_tilde, mapping_matrix)
-
-
 @partial(jax.vmap, in_axes=[None, 0, None, None, None, None], out_axes=0)
 def __w_compact_matmul_sparse_mapping_matrix_from(
     w_compact: np.ndarray[tuple[int, int], np.float64],
@@ -942,7 +911,8 @@ def log_likelihood_function_via_w_tilde_from(
     data: np.ndarray[tuple[int], np.complex128],
     noise_map: np.ndarray[tuple[int], np.complex128],
     w_tilde: np.ndarray[tuple[int, int], np.float64],
-    mapping_matrix: np.ndarray[tuple[int, int], np.float64],
+    pix_indexes_for_sub_slim_index: np.ndarray[tuple[int, int], np.int64],
+    pix_weights_for_sub_slim_index: np.ndarray[np.ndarray[tuple[int, int], np.float64]],
     neighbors: np.ndarray[tuple[int, int], np.int64],
     neighbors_sizes: np.ndarray[tuple[int], np.int64],
 ) -> float:
@@ -967,8 +937,10 @@ def log_likelihood_function_via_w_tilde_from(
         The wavelengths of the coordinates in the uv-plane for the interferometer dataset
     grid_radians_slim : ndarray, shape (M, 2), dtype=float64
         The 1D (y,x) grid of coordinates in radians corresponding to real-space mask
-    mapping_matrix : ndarray, shape (M, S), dtype=float64
-        Matrix representing mappings between sub-grid pixels and pixelization pixels
+    pix_indexes_for_sub_slim_index : ndarray, shape (M, B), dtype=int64
+        The mappings from a data sub-pixel index to a pixelization pixel index.
+    pix_weights_for_sub_slim_index : ndarray, shape (M, B), dtype=float64
+        The weights of the mappings of every data sub pixel and pixelization pixel.
     neighbors : ndarray, shape (S, P), dtype=int64
         Array providing indices of neighbors for each pixel
     neighbors_sizes : ndarray, shape (S,), dtype=int64
@@ -995,10 +967,17 @@ def log_likelihood_function_via_w_tilde_from(
     ``w_tilde`` is 36.5GiB,
     ``mapping_matrix`` is 0.52GiB.
     """
+    S = neighbors_sizes.size
     coefficient = 1.0
 
     noise_normalization: float = noise_normalization_complex_from(noise_map)
 
+    # 3MB in memory, (M, S) in shape
+    mapping_matrix = mapping_matrix_from_BCOO(
+        pix_indexes_for_sub_slim_index,
+        pix_weights_for_sub_slim_index,
+        S,
+    )
     # (S, S)
     curvature_matrix = curvature_matrix_via_w_tilde_from(w_tilde, mapping_matrix)
 
@@ -1053,7 +1032,8 @@ def log_likelihood_function_via_w_compact_from(
     noise_map: np.ndarray[tuple[int], np.complex128],
     w_compact: np.ndarray[tuple[int, int], np.float64],
     native_index_for_slim_index: np.ndarray[tuple[int, int], np.int64],
-    mapping_matrix: np.ndarray[tuple[int, int], np.float64],
+    pix_indexes_for_sub_slim_index: np.ndarray[tuple[int, int], np.int64],
+    pix_weights_for_sub_slim_index: np.ndarray[np.ndarray[tuple[int, int], np.float64]],
     neighbors: np.ndarray[tuple[int, int], np.int64],
     neighbors_sizes: np.ndarray[tuple[int], np.int64],
 ) -> float:
@@ -1078,8 +1058,10 @@ def log_likelihood_function_via_w_compact_from(
         The wavelengths of the coordinates in the uv-plane for the interferometer dataset
     grid_radians_slim : ndarray, shape (M, 2), dtype=float64
         The 1D (y,x) grid of coordinates in radians corresponding to real-space mask
-    mapping_matrix : ndarray, shape (M, S), dtype=float64
-        Matrix representing mappings between sub-grid pixels and pixelization pixels
+    pix_indexes_for_sub_slim_index : ndarray, shape (M, B), dtype=int64
+        The mappings from a data sub-pixel index to a pixelization pixel index.
+    pix_weights_for_sub_slim_index : ndarray, shape (M, B), dtype=float64
+        The weights of the mappings of every data sub pixel and pixelization pixel.
     neighbors : ndarray, shape (S, P), dtype=int64
         Array providing indices of neighbors for each pixel
     neighbors_sizes : ndarray, shape (S,), dtype=int64
@@ -1106,12 +1088,28 @@ def log_likelihood_function_via_w_compact_from(
     ``w_tilde`` is 36.5GiB,
     ``mapping_matrix`` is 0.52GiB.
     """
+    S = neighbors_sizes.size
     coefficient = 1.0
 
     noise_normalization: float = noise_normalization_complex_from(noise_map)
 
+    # 3MB in memory, (M, S) in shape
+    mapping_matrix = mapping_matrix_from_BCOO(
+        pix_indexes_for_sub_slim_index,
+        pix_weights_for_sub_slim_index,
+        S,
+    )
+    # (M, S)
+    WT = __w_compact_matmul_sparse_mapping_matrix_from(
+        w_compact,
+        native_index_for_slim_index,
+        native_index_for_slim_index,
+        pix_indexes_for_sub_slim_index,
+        pix_weights_for_sub_slim_index,
+        S,
+    )
     # (S, S)
-    curvature_matrix = curvature_matrix_via_w_compact_from(w_compact, native_index_for_slim_index, mapping_matrix)
+    curvature_matrix = mapping_matrix.T @ WT
 
     # shape: (S, S)
     # memory requirement: O(S^2)
@@ -1125,7 +1123,7 @@ def log_likelihood_function_via_w_compact_from(
     # FLOPS: S^2
     curvature_reg_matrix = curvature_matrix + regularization_matrix
     # shape: (S,)
-    # FLOPS: 2MS
+    # FLOPS: 2MB
     data_vector = data_vector_from(mapping_matrix, dirty_image)
     # FLOPS: O(S^3)
     log_regularization_matrix_term_over2 = jnp.log(
