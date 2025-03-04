@@ -437,7 +437,8 @@ def sparse_mapping_matrix_transpose_matmul(
 
         this function focused on a fixed m, i.e. ``matrix`` is of shape (S2,), and ``mapping_matrix`` would be of shape (S1,)
 
-        This function effectively perform the outer product of this row of ``mapping_matrix`` with the corresponding row of ``matrix``.
+        This function effectively perform the outer product of this row of ``mapping_matrix`` with the corresponding row of ``matrix``
+        and add it to the carry. I.e. if ``carry = jnp.zeros((S1, S2))``, then this function produces the matmul at a fixed m.
 
         Memory cost: 2B + (B + S1)S2
 
@@ -461,6 +462,7 @@ def sparse_mapping_matrix_transpose_matmul(
     ) -> tuple[np.ndarray[tuple[int, int], np.float64], None]:
         return f_m(carry, *args), None
 
+    # the scan then accumulates the m-dimension, effectively sum over m.
     res, _ = jax.lax.scan(
         f_scan,
         jnp.zeros((S1, S2)),
