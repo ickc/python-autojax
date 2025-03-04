@@ -17,6 +17,7 @@ AUTOJAX_N_MAPPING_NEIGHBORS: int = 3  # Delaunay
 AUTOJAX_DATA_SIZE: int = 1024
 AUTOJAX_NEIGHBOR_SIZE: int = 32
 AUTOJAX_SRC_IMG_SIZE: int = 256
+AUTOJAX_LOAD_DATA: bool = True
 
 RTOL: float = 2e-6
 
@@ -506,7 +507,7 @@ class Reference:
 
 
 @pytest.fixture(
-    params=(DataLoaded, DataGenerated),
+    params=(DataLoaded, DataGenerated) if AUTOJAX_LOAD_DATA else (DataGenerated,),
     scope="module",
 )
 def data_bundle(request):
