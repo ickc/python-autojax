@@ -19,7 +19,7 @@ tests_generated: list[str] = [
     # "curvature_matrix_via_w_tilde_curvature_preload_interferometer_from",
     "curvature_matrix_via_w_tilde_from",
     "data_vector_from",
-    # "log_likelihood_function_via_w_tilde_preload_from",
+    "log_likelihood_function_via_w_compact_from",
     "log_likelihood_function_via_w_tilde_from",
     "mapping_matrix_from",
     # "mask_2d_centres_from",
@@ -41,7 +41,7 @@ tests_all: list[str] = [
     "curvature_matrix_via_w_tilde_curvature_preload_interferometer_from",
     "curvature_matrix_via_w_tilde_from",
     "data_vector_from",
-    "log_likelihood_function_via_w_tilde_preload_from",
+    "log_likelihood_function_via_w_compact_from",
     "log_likelihood_function_via_w_tilde_from",
     "mapping_matrix_from",
     # "mask_2d_centres_from",
@@ -642,51 +642,6 @@ class TestBenchJax(metaclass=AutoTestMeta):
 
 
 # special case
-
-
-class TestLogLikelihood:
-    """Add the original preload method to the benchmark too.
-
-    Example
-    -------
-
-        pytest -m benchmark -k test_log_likelihood_function
-    """
-
-    @pytest.mark.benchmark
-    def test_log_likelihood_function_via_w_tilde_preload_from_original(self, data_bundle, benchmark):
-        data, ref, _ = data_bundle
-        benchmark.group = f"log_likelihood_function_via_w_tilde_from_{type(data).__name__}"
-
-        data_dict = data.dict()
-        ref_dict = ref.ref
-        func = original.log_likelihood_function_via_w_tilde_preload_from
-        run = get_run(func, data_dict)
-        res = benchmark(run)
-        np.testing.assert_allclose(res, ref_dict["log_likelihood_function_via_w_tilde_from"], rtol=RTOL)
-
-    @pytest.mark.benchmark
-    def test_log_likelihood_function_via_w_compact_from_numba(self, data_bundle, benchmark):
-        data, ref, _ = data_bundle
-        benchmark.group = f"log_likelihood_function_via_w_tilde_from_{type(data).__name__}"
-
-        data_dict = data.dict()
-        ref_dict = ref.ref
-        func = numba.log_likelihood_function_via_w_compact_from
-        run = get_run(func, data_dict)
-        res = benchmark(run)
-        np.testing.assert_allclose(res, ref_dict["log_likelihood_function_via_w_tilde_from"], rtol=RTOL)
-
-    @pytest.mark.benchmark
-    def test_log_likelihood_function_via_w_compact_from_jax(self, data_bundle, benchmark):
-        data, ref, data_dict_jax = data_bundle
-        benchmark.group = f"log_likelihood_function_via_w_tilde_from_{type(data).__name__}"
-
-        ref_dict = ref.ref
-        func = jax.log_likelihood_function_via_w_compact_from
-        run = get_run(func, data_dict_jax, jax=True)
-        res = benchmark(run)
-        np.testing.assert_allclose(res, ref_dict["log_likelihood_function_via_w_tilde_from"], rtol=RTOL)
 
 
 class TestWTilde:

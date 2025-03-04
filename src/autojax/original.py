@@ -923,7 +923,7 @@ def log_likelihood_function_via_w_tilde_from(
     )
 
 
-def log_likelihood_function_via_w_tilde_preload_from(
+def log_likelihood_function_via_w_compact_from(
     dirty_image: np.ndarray[tuple[int], np.float64],
     data: np.ndarray[tuple[int], np.complex128],
     noise_map: np.ndarray[tuple[int], np.complex128],
