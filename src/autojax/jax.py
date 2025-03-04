@@ -508,6 +508,39 @@ def curvature_matrix_via_w_compact_sparse_mapping_matrix_from(
     )
 
 
+@partial(jax.jit, static_argnums=4)
+def curvature_matrix_via_w_compact_sparse_mapping_matrix_from_BCOO(
+    w_compact: np.ndarray[tuple[int, int], np.float64],
+    native_index_for_slim_index: np.ndarray[tuple[int, int], np.int64],
+    pix_indexes_for_sub_slim_index: np.ndarray[tuple[int, int], np.int64],
+    pix_weights_for_sub_slim_index: np.ndarray[np.ndarray[tuple[int, int], np.float64]],
+    pixels: int,
+) -> np.ndarray[tuple[int, int], np.float64]:
+    """Calculate the curvature matrix using the compact w_tilde matrix and the sparse mapping matrix.
+
+    This calculates T^T @ w_tilde @ T as two matrix multiplications, WT = w_tilde @ T and F = T^T @ WT.
+
+    Memory cost: O((3 + 2B + S)M)
+
+    FLOP cost: 2(2 + B)M^2 + 2MBS, B = pix_size_for_sub_slim_index.mean(), B=3 for Delaunay.
+
+    """
+    WT = __w_compact_matmul_sparse_mapping_matrix_from(
+        w_compact,
+        native_index_for_slim_index,
+        native_index_for_slim_index,
+        pix_indexes_for_sub_slim_index,
+        pix_weights_for_sub_slim_index,
+        pixels,
+    )
+    mapping_matrix = mapping_matrix_from_BCOO(
+        pix_indexes_for_sub_slim_index,
+        pix_weights_for_sub_slim_index,
+        pixels,
+    )
+    return mapping_matrix.T @ WT
+
+
 @jax.jit
 def w_tilde_via_preload_from(
     w_tilde_preload: np.ndarray[tuple[int, int], np.float64],
