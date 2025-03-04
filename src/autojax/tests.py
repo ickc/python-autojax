@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import inspect
+import os
 from dataclasses import dataclass
 from functools import cached_property
 from pathlib import Path
@@ -12,12 +13,21 @@ from jax import numpy as jnp
 
 from . import jax, numba, original
 
-AUTOJAX_GRID_SIZE: int = 30
-AUTOJAX_N_MAPPING_NEIGHBORS: int = 3  # Delaunay
-AUTOJAX_DATA_SIZE: int = 1024
-AUTOJAX_NEIGHBOR_SIZE: int = 32
-AUTOJAX_SRC_IMG_SIZE: int = 256
-AUTOJAX_LOAD_DATA: bool = True
+
+def _get_env_int(var_name: str, default: int) -> int:
+    return int(os.getenv(var_name, default))
+
+
+def _get_env_bool(var_name: str, default: bool) -> bool:
+    return os.getenv(var_name) is not None if default is False else bool(os.getenv(var_name))
+
+
+AUTOJAX_GRID_SIZE: int = _get_env_int("AUTOJAX_GRID_SIZE", 30)
+AUTOJAX_N_MAPPING_NEIGHBORS: int = _get_env_int("AUTOJAX_N_MAPPING_NEIGHBORS", 3)  # Delaunay
+AUTOJAX_DATA_SIZE: int = _get_env_int("AUTOJAX_DATA_SIZE", 1024)
+AUTOJAX_NEIGHBOR_SIZE: int = _get_env_int("AUTOJAX_NEIGHBOR_SIZE", 32)
+AUTOJAX_SRC_IMG_SIZE: int = _get_env_int("AUTOJAX_SRC_IMG_SIZE", 256)
+AUTOJAX_NO_LOAD_DATA: bool = _get_env_bool("AUTOJAX_NO_LOAD_DATA", False)
 
 RTOL: float = 2e-6
 
@@ -507,7 +517,7 @@ class Reference:
 
 
 @pytest.fixture(
-    params=(DataLoaded, DataGenerated) if AUTOJAX_LOAD_DATA else (DataGenerated,),
+    params=(DataGenerated,) if AUTOJAX_NO_LOAD_DATA else (DataLoaded, DataGenerated),
     scope="module",
 )
 def data_bundle(request):
