@@ -333,7 +333,7 @@ def curvature_matrix_via_w_compact_from(
 
 
 @partial(jax.vmap, in_axes=[None, 0, None, None, None, None], out_axes=0)
-def _w_tilde_matmul_mapping_matrix_via_compact_sparse_from(
+def __w_compact_matmul_sparse_mapping_matrix_from(
     w_compact: np.ndarray[tuple[int, int], np.float64],
     native_index_for_slim_index_m1: np.ndarray[tuple[int], np.int64],
     native_index_for_slim_index: np.ndarray[tuple[int, int], np.int64],
@@ -390,13 +390,13 @@ def _w_compact_matmul_sparse_mapping_matrix_from(
 
     This expands w_tilde @ mapping_matrix as M by S dense matrix.
 
-    This wraps the vmap function as the ``native_index_for_slim_index`` is repeated, first for vmapping to ``m1``, second for ``m2``.
+    This wraps the vmap function as the ``native_index_for_slim_index`` is repeated, first for vmapping to ``m1``, second for ``m2``. This is not currently used but provide a better user interface if needed.
 
     Memory cost: (3 + 2B + S)M + S
 
     FLOP cost: 2(2 + B)M^2, B = pix_size_for_sub_slim_index.mean(), B=3 for Delaunay.
     """
-    return _w_tilde_matmul_mapping_matrix_via_compact_sparse_from(
+    return __w_compact_matmul_sparse_mapping_matrix_from(
         w_compact,
         native_index_for_slim_index,
         native_index_for_slim_index,
@@ -493,7 +493,7 @@ def curvature_matrix_via_w_compact_sparse_mapping_matrix_from(
 
     """
     return sparse_mapping_matrix_transpose_matmul(
-        _w_tilde_matmul_mapping_matrix_via_compact_sparse_from(
+        __w_compact_matmul_sparse_mapping_matrix_from(
             w_compact,
             native_index_for_slim_index,
             native_index_for_slim_index,
