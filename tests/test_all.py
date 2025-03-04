@@ -87,6 +87,9 @@ class Data:
             "uv_wavelengths": self.uv_wavelengths,
             "grid_radians_2d": self.grid_radians_2d,
             "grid_radians_slim": self.grid_radians_slim,
+            "grid_size": self.N,
+            "pix_pixels": self.pix_pixels,
+            "pixel_scale": self.pixel_scale,
             "native_index_for_slim_index": self.native_index_for_slim_index,
             "slim_index_for_sub_slim_index": self.slim_index_for_sub_slim_index,
             "sub_fraction": self.sub_fraction,
@@ -317,13 +320,6 @@ class DataLoaded(Data):
 
     def __post_init__(self):
         self._data = np.load(self.path)
-
-    def dict(self) -> dict:
-        res = super().dict()
-        return res | {
-            "pix_pixels": self.pix_pixels,
-            "shape_masked_pixels_2d": self.shape_masked_pixels_2d,
-        }
 
     @property
     def M(self) -> int:
@@ -662,7 +658,7 @@ class TestLogLikelihood:
         data, ref, _ = data_bundle
         benchmark.group = f"log_likelihood_function_via_w_tilde_from_{type(data).__name__}"
 
-        data_dict = data.dict() | {"pix_pixels": data.S}
+        data_dict = data.dict()
         ref_dict = ref.ref
         func = original.log_likelihood_function_via_w_tilde_preload_from
         run = get_run(func, data_dict)
@@ -674,7 +670,7 @@ class TestLogLikelihood:
         data, ref, _ = data_bundle
         benchmark.group = f"log_likelihood_function_via_w_tilde_from_{type(data).__name__}"
 
-        data_dict = data.dict() | {"pix_pixels": data.S}
+        data_dict = data.dict()
         ref_dict = ref.ref
         func = numba.log_likelihood_function_via_w_compact_from
         run = get_run(func, data_dict)
@@ -686,7 +682,6 @@ class TestLogLikelihood:
         data, ref, data_dict_jax = data_bundle
         benchmark.group = f"log_likelihood_function_via_w_tilde_from_{type(data).__name__}"
 
-        data_dict = data.dict() | {"pix_pixels": data.S}
         ref_dict = ref.ref
         func = jax.log_likelihood_function_via_w_compact_from
         run = get_run(func, data_dict_jax, jax=True)
@@ -729,10 +724,7 @@ class TestWTilde:
     @pytest.mark.benchmark
     def test_w_tilde_curvature_interferometer_from_numba_compact(self, data_bundle, benchmark):
         data, _, _ = data_bundle
-        data_dict = data.dict() | {
-            "grid_size": data.N,
-            "pixel_scale": data.pixel_scale,
-        }
+        data_dict = data.dict()
 
         test = "w_tilde_curvature_interferometer_from"
         benchmark.group = f"{test}_{type(data).__name__}"
@@ -745,10 +737,7 @@ class TestWTilde:
     @pytest.mark.benchmark
     def test_w_tilde_curvature_interferometer_from_jax_compact(self, data_bundle, benchmark):
         data, _, data_dict_jax = data_bundle
-        data_dict = data_dict_jax | {
-            "grid_size": data.N,
-            "pixel_scale": data.pixel_scale,
-        }
+        data_dict = data_dict_jax
 
         test = "w_tilde_curvature_interferometer_from"
         benchmark.group = f"{test}_{type(data).__name__}"
@@ -778,10 +767,7 @@ class TestWTilde:
     @pytest.mark.benchmark
     def test_w_tilde_curvature_interferometer_from_numba_compact_expanded(self, data_bundle, benchmark):
         data, ref, _ = data_bundle
-        data_dict = data.dict() | {
-            "grid_size": data.N,
-            "pixel_scale": data.pixel_scale,
-        }
+        data_dict = data.dict()
 
         test = "w_tilde_curvature_interferometer_from"
         benchmark.group = f"{test}_{type(data).__name__}"
@@ -796,10 +782,7 @@ class TestWTilde:
     @pytest.mark.benchmark
     def test_w_tilde_curvature_interferometer_from_jax_compact_expanded(self, data_bundle, benchmark):
         data, ref, data_dict_jax = data_bundle
-        data_dict = data_dict_jax | {
-            "grid_size": data.N,
-            "pixel_scale": data.pixel_scale,
-        }
+        data_dict = data_dict_jax
 
         test = "w_tilde_curvature_interferometer_from"
         benchmark.group = f"{test}_{type(data).__name__}"
@@ -830,7 +813,7 @@ class TestCurvatureMatrix:
     def test_curvature_matrix_original(self, data_bundle, benchmark):
         """From w_tilde, construct dense mapping matrix."""
         data, ref, _ = data_bundle
-        data_dict = data.dict() | {"pix_pixels": data.S}
+        data_dict = data.dict()
 
         test = "curvature_matrix"
         benchmark.group = f"{test}_{type(data).__name__}"
@@ -847,7 +830,7 @@ class TestCurvatureMatrix:
     def test_curvature_matrix_original_preload_direct(self, data_bundle, benchmark):
         """From w-preload, internal sparse mapping matrix."""
         data, ref, _ = data_bundle
-        data_dict = data.dict() | {"pix_pixels": data.S}
+        data_dict = data.dict()
 
         test = "curvature_matrix"
         benchmark.group = f"{test}_{type(data).__name__}"
@@ -864,10 +847,7 @@ class TestCurvatureMatrix:
     def test_curvature_matrix_numba(self, data_bundle, benchmark):
         """From w_tilde, construct dense mapping matrix."""
         data, ref, _ = data_bundle
-        data_dict = data.dict() | {
-            "grid_size": data.N,
-            "pixel_scale": data.pixel_scale,
-        }
+        data_dict = data.dict()
 
         test = "curvature_matrix"
         benchmark.group = f"{test}_{type(data).__name__}"
@@ -884,11 +864,7 @@ class TestCurvatureMatrix:
     def test_curvature_matrix_numba_compact_sparse_direct(self, data_bundle, benchmark):
         """From w_compact, internal sparse mapping matrix, direct 4-loop matmul."""
         data, ref, _ = data_bundle
-        data_dict = data.dict() | {
-            "grid_size": data.N,
-            "pixel_scale": data.pixel_scale,
-            "pixels": data.S,
-        }
+        data_dict = data.dict()
 
         test = "curvature_matrix"
         benchmark.group = f"{test}_{type(data).__name__}"
@@ -904,11 +880,7 @@ class TestCurvatureMatrix:
     def test_curvature_matrix_numba_compact_sparse(self, data_bundle, benchmark):
         """From w_compact, internal sparse mapping matrix, sparse matmul."""
         data, ref, _ = data_bundle
-        data_dict = data.dict() | {
-            "grid_size": data.N,
-            "pixel_scale": data.pixel_scale,
-            "pixels": data.S,
-        }
+        data_dict = data.dict()
 
         test = "curvature_matrix"
         benchmark.group = f"{test}_{type(data).__name__}"
@@ -961,11 +933,7 @@ class TestCurvatureMatrix:
     def test_curvature_matrix_jax_compact_sparse(self, data_bundle, benchmark):
         """From w_compact, internal sparse mapping matrix."""
         data, ref, data_dict_jax = data_bundle
-        data_dict = data_dict_jax | {
-            "pixels": data.S,
-            "grid_size": data.N,
-            "pixel_scale": data.pixel_scale,
-        }
+        data_dict = data_dict_jax
 
         test = "curvature_matrix"
         benchmark.group = f"{test}_{type(data).__name__}"
@@ -982,11 +950,7 @@ class TestCurvatureMatrix:
     def test_curvature_matrix_jax_compact_sparse_BCOO(self, data_bundle, benchmark):
         """From w_compact, left BCOO mapping matrix, right internal sparse mapping matrix."""
         data, ref, data_dict_jax = data_bundle
-        data_dict = data_dict_jax | {
-            "pixels": data.S,
-            "grid_size": data.N,
-            "pixel_scale": data.pixel_scale,
-        }
+        data_dict = data_dict_jax
 
         test = "curvature_matrix"
         benchmark.group = f"{test}_{type(data).__name__}"
