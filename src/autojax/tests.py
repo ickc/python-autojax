@@ -10,6 +10,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 from jax import numpy as jnp
+from numba import jit
 
 from . import jax, numba, original
 
@@ -412,12 +413,14 @@ class DataGenerated(Data):
         rng = np.random.default_rng(deterministic_seed("uv_wavelengths", K, 2))
         return rng.random((K, 2))
 
-    @cached_property
-    def pix_indexes_for_sub_slim_index(self) -> np.ndarray[tuple[int, int], np.int64]:
-        M = self.M
-        S = self.S
-        B = self.B
-        res = np.empty((M, B), dtype=int)
+    @staticmethod
+    @jit(nopython=True, nogil=True, parallel=True)
+    def _pix_indexes_for_sub_slim_index(
+        M: int,
+        S: int,
+        B: int,
+    ) -> np.ndarray[tuple[int, int], np.int64]:
+        res = np.empty((M, B), dtype=np.int64)
         for m in range(M):
             # 0 <= s_low < S
             s_low = m * S // M
@@ -428,6 +431,10 @@ class DataGenerated(Data):
                 s_low = s_high - B
             res[m, :] = np.arange(s_low, s_high)
         return res
+
+    @cached_property
+    def pix_indexes_for_sub_slim_index(self) -> np.ndarray[tuple[int, int], np.int64]:
+        return self._pix_indexes_for_sub_slim_index(self.M, self.S, self.B)
 
     @cached_property
     def pix_weights_for_sub_slim_index(self) -> np.ndarray[tuple[int, int], np.float64]:
