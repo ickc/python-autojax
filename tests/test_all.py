@@ -559,45 +559,40 @@ class AutoTestMeta(type):
 
     def __new__(cls, name, bases, namespace):
         new_cls = super().__new__(cls, name, bases, namespace)
+        mod_name = new_cls.mod.__name__.split(".")[-1]
 
         def create_test(test: str):
+
+            def _test_method(self, data_bundle, benchmark=None):
+                data, ref, data_dict_jax = data_bundle
+
+                try:
+                    func = getattr(self.mod, test)
+                except AttributeError:
+                    pytest.skip(f"{mod_name}.{test} not implemented")
+
+                if benchmark is not None:
+                    benchmark.group = f"{test}_{type(data).__name__}"
+
+                data_dict = data_dict_jax if new_cls.mod == jax else data.dict()
+                ref_dict = ref.ref
+                run = get_run(func, data_dict, new_cls.mod == jax)
+                res = run() if benchmark is None else benchmark(run)
+                np.testing.assert_allclose(res, ref_dict[test], rtol=RTOL)
+
             if new_cls.mode == "benchmark":
 
                 @pytest.mark.benchmark
                 def test_method(self, data_bundle, benchmark):
-                    data, ref, data_dict_jax = data_bundle
-                    try:
-                        func = getattr(self.mod, test)
-                    except AttributeError:
-                        mod_name = self.mod.__name__.split(".")[-1]
-                        pytest.skip(f"{mod_name}.{test} not implemented")
-
-                    benchmark.group = f"{test}_{type(data).__name__}"
-
-                    data_dict = data_dict_jax if new_cls.mod == jax else data.dict()
-                    ref_dict = ref.ref
-                    run = get_run(func, data_dict, new_cls.mod == jax)
-                    res = benchmark(run)
-                    np.testing.assert_allclose(res, ref_dict[test], rtol=RTOL)
+                    _test_method(self, data_bundle, benchmark=benchmark)
 
             else:
 
                 @pytest.mark.unittest
                 def test_method(self, data_bundle):
-                    data, ref, data_dict_jax = data_bundle
-                    try:
-                        func = getattr(self.mod, test)
-                    except AttributeError:
-                        mod_name = self.mod.__name__.split(".")[-1]
-                        pytest.skip(f"{mod_name}.{test} not implemented")
+                    _test_method(self, data_bundle)
 
-                    data_dict = data_dict_jax if new_cls.mod == jax else data.dict()
-                    ref_dict = ref.ref
-                    run = get_run(func, data_dict)
-                    res = run()
-                    np.testing.assert_allclose(res, ref_dict[test], rtol=RTOL)
-
-            test_method.__name__ = f"test_{test}_{new_cls.mod.__name__.split('.')[-1]}"
+            test_method.__name__ = f"test_{test}_{mod_name}"
             return test_method
 
         for test_name in tests:
