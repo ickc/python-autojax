@@ -29,6 +29,7 @@ myst-parser = "*"
 sphinx = "*"
 sphinx-autobuild = "*"
 sphinxcontrib-apidoc = "*"
+pygal = ">=3.0.5,<4"
 
 [pypi-dependencies]
 sphinx-last-updated-by-git = "*"
