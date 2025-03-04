@@ -9,7 +9,6 @@ from pathlib import Path
 import numpy as np
 import pytest
 from jax import numpy as jnp
-from jax.experimental import sparse
 
 from autojax import jax, numba, original
 
@@ -525,7 +524,6 @@ def data_bundle(request):
     tests = tests_generated if Data is DataGenerated else tests_loaded
     ref = Reference(data, tests)
     data_dict_jax = {k: jnp.array(v) if isinstance(v, np.ndarray) else v for k, v in data.dict().items()}
-    data_dict_jax["mapping_matrix_BCOO"] = sparse.BCOO.fromdense(data_dict_jax["mapping_matrix"])
     return data, ref, data_dict_jax
 
 
@@ -553,6 +551,21 @@ def get_run_composed_from(func1, func2, data_dict, jax=False):
 
     def run_jax():
         return func2(func1(*args1), *args2).block_until_ready()
+
+    return run_jax if jax else run
+
+
+def get_run_composed_from_prepend(func1, func2, data_dict, jax=False):
+    sig1 = inspect.signature(func1)
+    args1 = [data_dict[key] for key in sig1.parameters]
+    sig2 = inspect.signature(func2)
+    args2 = [data_dict[key] for key in sig2.parameters][:-1]
+
+    def run():
+        return func2(*args2, func1(*args1))
+
+    def run_jax():
+        return func2(*args2, func1(*args1)).block_until_ready()
 
     return run_jax if jax else run
 
@@ -804,37 +817,39 @@ class TestWTilde:
 class TestCurvatureMatrix:
     """Compute curvature matrix via various methods.
 
-    This adds on top of existing benchmarks to compare the performance of the preload method.
-
-    The test names are a bit strange, but is designed to be filtered like this:
-
-        pytest -m benchmark -k curvature_matrix_via_w_tilde_from
+    The input w can be w_tilde, preload, or compact. w_tilde is allowed
+        to consider that it can be expanded in memory outside the MCMC loop.
+    The input mapping_matrix must be its sparse form, such as pix_weights_for_sub_slim_index, ...
+        This is because the mapping matrix has to be generated on the fly anyway,
+        so even the dense form must be generated from the sparse form at some
+        point in the MCMC loop.
     """
 
+    # original
     @pytest.mark.benchmark
-    def test_curvature_matrix_via_w_tilde_from_jax_BCOO(self, data_bundle, benchmark):
-        data, ref, data_dict_jax = data_bundle
-        data_dict = data_dict_jax | {
-            "mapping_matrix": data_dict_jax["mapping_matrix_BCOO"],
-        }
+    def test_curvature_matrix_original(self, data_bundle, benchmark):
+        """From w_tilde, construct dense mapping matrix."""
+        data, ref, _ = data_bundle
+        data_dict = data.dict() | {"pix_pixels": data.S}
 
-        test = "curvature_matrix_via_w_tilde_from"
+        test = "curvature_matrix"
         benchmark.group = f"{test}_{type(data).__name__}"
 
-        run = get_run(
-            jax.curvature_matrix_via_w_tilde_from,
+        run = get_run_composed_from_prepend(
+            original.mapping_matrix_from,
+            original.curvature_matrix_via_w_tilde_from,
             data_dict,
-            jax=True,
         )
         res = benchmark(run)
         np.testing.assert_allclose(res, ref.ref["curvature_matrix_via_w_tilde_from"], rtol=RTOL)
 
     @pytest.mark.benchmark
-    def test_curvature_matrix_via_w_tilde_from_original_preload_direct(self, data_bundle, benchmark):
+    def test_curvature_matrix_original_preload_direct(self, data_bundle, benchmark):
+        """From w-preload, internal sparse mapping matrix."""
         data, ref, _ = data_bundle
         data_dict = data.dict() | {"pix_pixels": data.S}
 
-        test = "curvature_matrix_via_w_tilde_from"
+        test = "curvature_matrix"
         benchmark.group = f"{test}_{type(data).__name__}"
 
         run = get_run(
@@ -844,26 +859,30 @@ class TestCurvatureMatrix:
         res = benchmark(run)
         np.testing.assert_allclose(res, ref.ref["curvature_matrix_via_w_tilde_from"], rtol=RTOL)
 
+    # numba
     @pytest.mark.benchmark
-    def test_curvature_matrix_via_w_tilde_from_numba_compact(self, data_bundle, benchmark):
+    def test_curvature_matrix_numba(self, data_bundle, benchmark):
+        """From w_tilde, construct dense mapping matrix."""
         data, ref, _ = data_bundle
         data_dict = data.dict() | {
             "grid_size": data.N,
             "pixel_scale": data.pixel_scale,
         }
 
-        test = "curvature_matrix_via_w_tilde_from"
+        test = "curvature_matrix"
         benchmark.group = f"{test}_{type(data).__name__}"
 
-        run = get_run(
-            numba.curvature_matrix_via_w_compact_from,
+        run = get_run_composed_from_prepend(
+            numba.mapping_matrix_from,
+            numba.curvature_matrix_via_w_tilde_from,
             data_dict,
         )
         res = benchmark(run)
         np.testing.assert_allclose(res, ref.ref["curvature_matrix_via_w_tilde_from"], rtol=RTOL)
 
     @pytest.mark.benchmark
-    def test_curvature_matrix_via_w_tilde_from_numba_compact_sparse_direct(self, data_bundle, benchmark):
+    def test_curvature_matrix_numba_compact_sparse_direct(self, data_bundle, benchmark):
+        """From w_compact, internal sparse mapping matrix, direct 4-loop matmul."""
         data, ref, _ = data_bundle
         data_dict = data.dict() | {
             "grid_size": data.N,
@@ -871,7 +890,7 @@ class TestCurvatureMatrix:
             "pixels": data.S,
         }
 
-        test = "curvature_matrix_via_w_tilde_from"
+        test = "curvature_matrix"
         benchmark.group = f"{test}_{type(data).__name__}"
 
         run = get_run(
@@ -882,7 +901,8 @@ class TestCurvatureMatrix:
         np.testing.assert_allclose(res, ref.ref["curvature_matrix_via_w_tilde_from"], rtol=RTOL)
 
     @pytest.mark.benchmark
-    def test_curvature_matrix_via_w_tilde_from_numba_compact_sparse(self, data_bundle, benchmark):
+    def test_curvature_matrix_numba_compact_sparse(self, data_bundle, benchmark):
+        """From w_compact, internal sparse mapping matrix, sparse matmul."""
         data, ref, _ = data_bundle
         data_dict = data.dict() | {
             "grid_size": data.N,
@@ -890,7 +910,7 @@ class TestCurvatureMatrix:
             "pixels": data.S,
         }
 
-        test = "curvature_matrix_via_w_tilde_from"
+        test = "curvature_matrix"
         benchmark.group = f"{test}_{type(data).__name__}"
 
         run = get_run(
@@ -900,8 +920,46 @@ class TestCurvatureMatrix:
         res = benchmark(run)
         np.testing.assert_allclose(res, ref.ref["curvature_matrix_via_w_tilde_from"], rtol=RTOL)
 
+    # jax
     @pytest.mark.benchmark
-    def test_curvature_matrix_via_w_tilde_from_jax_compact_sparse(self, data_bundle, benchmark):
+    def test_curvature_matrix_jax(self, data_bundle, benchmark):
+        """From w_tilde, construct dense mapping matrix."""
+        data, ref, data_dict_jax = data_bundle
+        data_dict = data_dict_jax
+
+        test = "curvature_matrix"
+        benchmark.group = f"{test}_{type(data).__name__}"
+
+        run = get_run_composed_from_prepend(
+            jax.mapping_matrix_from,
+            jax.curvature_matrix_via_w_tilde_from,
+            data_dict,
+            jax=True,
+        )
+        res = benchmark(run)
+        np.testing.assert_allclose(res, ref.ref["curvature_matrix_via_w_tilde_from"], rtol=RTOL)
+
+    @pytest.mark.benchmark
+    def test_curvature_matrix_jax_BCOO(self, data_bundle, benchmark):
+        """From w_tilde, construct BCOO mapping matrix."""
+        data, ref, data_dict_jax = data_bundle
+        data_dict = data_dict_jax
+
+        test = "curvature_matrix"
+        benchmark.group = f"{test}_{type(data).__name__}"
+
+        run = get_run_composed_from_prepend(
+            jax.mapping_matrix_from_BCOO,
+            jax.curvature_matrix_via_w_tilde_from,
+            data_dict,
+            jax=True,
+        )
+        res = benchmark(run)
+        np.testing.assert_allclose(res, ref.ref["curvature_matrix_via_w_tilde_from"], rtol=RTOL)
+
+    @pytest.mark.benchmark
+    def test_curvature_matrix_jax_compact_sparse(self, data_bundle, benchmark):
+        """From w_compact, internal sparse mapping matrix."""
         data, ref, data_dict_jax = data_bundle
         data_dict = data_dict_jax | {
             "pixels": data.S,
@@ -909,7 +967,7 @@ class TestCurvatureMatrix:
             "pixel_scale": data.pixel_scale,
         }
 
-        test = "curvature_matrix_via_w_tilde_from"
+        test = "curvature_matrix"
         benchmark.group = f"{test}_{type(data).__name__}"
 
         run = get_run(
@@ -921,38 +979,20 @@ class TestCurvatureMatrix:
         np.testing.assert_allclose(res, ref.ref["curvature_matrix_via_w_tilde_from"], rtol=RTOL)
 
     @pytest.mark.benchmark
-    def test_curvature_matrix_via_w_tilde_from_jax_compact(self, data_bundle, benchmark):
+    def test_curvature_matrix_jax_compact_sparse_BCOO(self, data_bundle, benchmark):
+        """From w_compact, left BCOO mapping matrix, right internal sparse mapping matrix."""
         data, ref, data_dict_jax = data_bundle
         data_dict = data_dict_jax | {
+            "pixels": data.S,
             "grid_size": data.N,
             "pixel_scale": data.pixel_scale,
         }
 
-        test = "curvature_matrix_via_w_tilde_from"
+        test = "curvature_matrix"
         benchmark.group = f"{test}_{type(data).__name__}"
 
         run = get_run(
-            jax.curvature_matrix_via_w_compact_from,
-            data_dict,
-            jax=True,
-        )
-        res = benchmark(run)
-        np.testing.assert_allclose(res, ref.ref["curvature_matrix_via_w_tilde_from"], rtol=RTOL)
-
-    @pytest.mark.benchmark
-    def test_curvature_matrix_via_w_tilde_from_jax_compact_BCOO(self, data_bundle, benchmark):
-        data, ref, data_dict_jax = data_bundle
-        data_dict = data_dict_jax | {
-            "grid_size": data.N,
-            "pixel_scale": data.pixel_scale,
-            "mapping_matrix": data_dict_jax["mapping_matrix_BCOO"],
-        }
-
-        test = "curvature_matrix_via_w_tilde_from"
-        benchmark.group = f"{test}_{type(data).__name__}"
-
-        run = get_run(
-            jax.curvature_matrix_via_w_compact_from,
+            jax.curvature_matrix_via_w_compact_sparse_mapping_matrix_from_BCOO,
             data_dict,
             jax=True,
         )
