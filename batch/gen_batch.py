@@ -51,17 +51,17 @@ export AUTOJAX_SRC_IMG_SIZE={src_img_size}
 # run pytest ###################################################################
 
 pytest --benchmark-save={name} -vv
-pytest-benchmark compare {name} --csv=batch/{name}.csv --columns=mean,stddev,ops,rounds,iterations --sort=mean
+pytest-benchmark compare '*{name}*' --csv=batch/{name}.csv --columns=mean,stddev,ops,rounds,iterations --sort=mean
 """
 
 
 def gen_batch(
     *,
     num_threads: int = 64,
-    grid_size: int = 128,
+    grid_size: int = 30,
     n_mapping_neighbors: int = 3,
     data_size: int = 1024,
-    neighbor_size: int = 10,
+    neighbor_size: int = 32,
     src_img_size: int = 256,
 ) -> None:
     name = f"N={grid_size}_B={n_mapping_neighbors}_K={data_size}_P={neighbor_size}_S={src_img_size}_NUM_THREADS={num_threads}"
