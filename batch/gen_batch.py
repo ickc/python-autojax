@@ -50,7 +50,7 @@ export AUTOJAX_SRC_IMG_SIZE={src_img_size}
 
 # run pytest ###################################################################
 
-pytest --benchmark-save={name} -vv
+pytest --benchmark-save={name} -vv -k "TestBenchWTilde or TestBenchCurvatureMatrix"
 pytest-benchmark compare '*{name}*' --csv=batch/{name}.csv --columns=mean,stddev,ops,rounds,iterations --sort=mean
 """
 
