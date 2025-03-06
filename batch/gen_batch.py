@@ -8,10 +8,10 @@ template: str = """#!/bin/bash -l
 #SBATCH -J autojax-bench-{name}
 #SBATCH -o batch/{name}.%J.out
 #SBATCH -e batch/{name}.%J.err
-#SBATCH -p cosma8-milan
+#SBATCH -p mi300x
 #SBATCH -A do018
 #SBATCH --exclusive
-#SBATCH -t 72:00:00
+#SBATCH -t 00:04:00
 
 # set no. of threads ###########################################################
 
@@ -50,14 +50,13 @@ export AUTOJAX_SRC_IMG_SIZE={src_img_size}
 
 # run pytest ###################################################################
 
-pytest --benchmark-save={name} -vv -k "TestBenchWTilde or TestBenchCurvatureMatrix"
-pytest-benchmark compare '*{name}*' --csv=batch/{name}.csv --columns=mean,stddev,ops,rounds,iterations --sort=mean
+pytest --benchmark-save={name} -vv
 """
 
 
 def gen_batch(
     *,
-    num_threads: int = 64,
+    num_threads: int = 96,
     grid_size: int = 30,
     n_mapping_neighbors: int = 3,
     data_size: int = 1024,
