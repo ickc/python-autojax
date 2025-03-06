@@ -587,6 +587,33 @@ def sparse_mapping_matrix_transpose_matmul(
     return F
 
 
+@numba.jit("f8[:, ::1](f8[:, ::1], i8[:, ::1], f8[:, ::1], i8)", nopython=True, nogil=True, parallel=False)
+def curvature_matrix_via_w_wilde_sparse_mapping_matrix_from(
+    w_tilde: np.ndarray[tuple[int, int], np.float64],
+    pix_indexes_for_sub_slim_index: np.ndarray[tuple[int, int], np.int64],
+    pix_weights_for_sub_slim_index: np.ndarray[np.ndarray[tuple[int, int], np.float64]],
+    pixels: int,
+) -> np.ndarray[tuple[int, int], np.float64]:
+    """Calculate the curvature matrix using the w_tilde matrix and the sparse mapping matrix.
+
+    Memory cost: MS + S^2
+
+    FLOP cost: 2BM(M + S), B = pix_size_for_sub_slim_index.mean(), B=3 for Delaunay.
+    """
+    TW = sparse_mapping_matrix_transpose_matmul(
+        w_tilde,
+        pix_indexes_for_sub_slim_index,
+        pix_weights_for_sub_slim_index,
+        pixels,
+    )
+    return sparse_mapping_matrix_transpose_matmul(
+        np.ascontiguousarray(TW.T),
+        pix_indexes_for_sub_slim_index,
+        pix_weights_for_sub_slim_index,
+        pixels,
+    )
+
+
 @numba.jit("f8[:, ::1](f8[:, ::1], i8[:, ::1], i8[:, ::1], f8[:, ::1], i8)", nopython=True, nogil=True, parallel=False)
 def curvature_matrix_via_w_compact_sparse_mapping_matrix_from(
     w_compact: np.ndarray[tuple[int, int], np.float64],

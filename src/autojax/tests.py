@@ -848,6 +848,22 @@ class TestBenchCurvatureMatrix:
         np.testing.assert_allclose(res, ref.ref["curvature_matrix_via_w_tilde_from"], rtol=RTOL)
 
     @pytest.mark.benchmark
+    def test_curvature_matrix_numba_sparse(self, data_bundle, benchmark):
+        """From w_tilde, internal sparse mapping matrix."""
+        data, ref, _ = data_bundle
+        data_dict = data.dict()
+
+        test = "curvature_matrix"
+        benchmark.group = f"{test}_{type(data).__name__}"
+
+        run = get_run(
+            numba.curvature_matrix_via_w_wilde_sparse_mapping_matrix_from,
+            data_dict,
+        )
+        res = benchmark(run)
+        np.testing.assert_allclose(res, ref.ref["curvature_matrix_via_w_tilde_from"], rtol=RTOL)
+
+    @pytest.mark.benchmark
     def test_curvature_matrix_numba_compact_sparse_direct(self, data_bundle, benchmark):
         """From w_compact, internal sparse mapping matrix, direct 4-loop matmul."""
         data, ref, _ = data_bundle
