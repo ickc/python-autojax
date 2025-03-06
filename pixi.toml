@@ -34,3 +34,12 @@ defopt = ">=6.4.0,<7"
 [pypi-dependencies]
 sphinx-last-updated-by-git = "*"
 autojax = { path = ".", editable = true}
+
+[feature.cuda]
+system-requirements = {cuda = "12"}
+
+[feature.cuda.target.linux-64.dependencies]
+jaxlib = { version = "*", build = "*cuda*" }
+
+[environments]
+cuda = ["cuda"]
