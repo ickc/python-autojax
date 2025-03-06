@@ -9,3 +9,8 @@ tasks:
     desc: "Show differences between modules."
     cmds:
       - pixi run python -m autojax.util.mod_diff
+  clean:
+    desc: "Clean benchmark files."
+    cmds:
+      - rm -rf .benchmarks
+      - find batch \( -name '*.out' -o -name '*.err' -o -name '*.sh' \) -delete
