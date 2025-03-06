@@ -13,7 +13,6 @@ python = ">=3.9"
 numpy = "*"
 numba = "*"
 jax = "*"
-jaxlib = "*"
 # build
 poetry = "*"
 # extras
