@@ -20,6 +20,7 @@ dependencies:
 - sphinxcontrib-apidoc *
 - pygal >=3.0.5,<4
 - defopt >=6.4.0,<7
+- ipykernel >=6.29.5,<7
 - pip
 - pip:
   - sphinx-last-updated-by-git
