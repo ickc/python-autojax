@@ -477,7 +477,7 @@ class DataGenerated(Data):
                 neighbors[b, counts[b]] = a
                 counts[b] += 1
 
-        # Remove self-loops by replacing the first occurrence with -1
+        # Remove self-loops
         for i in range(S):
             for j in range(P):
                 if neighbors[i, j] == i:
