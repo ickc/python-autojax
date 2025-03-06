@@ -878,6 +878,23 @@ class TestBenchCurvatureMatrix:
         np.testing.assert_allclose(res, ref.ref["curvature_matrix_via_w_tilde_from"], rtol=RTOL)
 
     @pytest.mark.benchmark
+    def test_curvature_matrix_jax_sparse(self, data_bundle, benchmark):
+        """From w_tilde, internal sparse mapping matrix."""
+        data, ref, data_dict_jax = data_bundle
+        data_dict = data_dict_jax
+
+        test = "curvature_matrix"
+        benchmark.group = f"{test}_{type(data).__name__}"
+
+        run = get_run(
+            jax.curvature_matrix_via_w_wilde_sparse_mapping_matrix_from,
+            data_dict,
+            jax=True,
+        )
+        res = benchmark(run)
+        np.testing.assert_allclose(res, ref.ref["curvature_matrix_via_w_tilde_from"], rtol=RTOL)
+
+    @pytest.mark.benchmark
     def test_curvature_matrix_jax_BCOO(self, data_bundle, benchmark):
         """From w_tilde, construct BCOO mapping matrix."""
         data, ref, data_dict_jax = data_bundle
