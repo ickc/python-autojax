@@ -6,7 +6,7 @@
 #SBATCH -e batch/{name}.%J.err
 #SBATCH -p mi300x
 #SBATCH -A do018
-#SBATCH -t 00:30:00
+#SBATCH -t 2:00:00
 
 # set no. of threads ###########################################################
 
