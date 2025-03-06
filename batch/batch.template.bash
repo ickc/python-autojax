@@ -45,4 +45,4 @@ export AUTOJAX_SRC_IMG_SIZE={src_img_size}
 
 # run pytest ###################################################################
 
-pytest --benchmark-save={name} -vv
+pytest --benchmark-save={name} -vv "TestBenchWTilde or TestBenchCurvatureMatrix"
