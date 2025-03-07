@@ -614,7 +614,8 @@ class AutoTestMeta(type):
 
         def create_test(test: str):
 
-            def _test_method(self, data_bundle, benchmark=None):
+            @pytest.mark.benchmark
+            def test_method(self, data_bundle, benchmark):
                 data, ref, data_dict_jax = data_bundle
 
                 try:
@@ -622,26 +623,13 @@ class AutoTestMeta(type):
                 except AttributeError:
                     pytest.skip(f"{mod_name}.{test} not implemented")
 
-                if benchmark is not None:
-                    benchmark.group = f"{test}_{type(data).__name__}"
+                benchmark.group = f"{test}_{type(data).__name__}"
 
                 data_dict = data_dict_jax if new_cls.mod == jax else data.dict()
                 ref_dict = ref.ref
                 run = get_run(func, data_dict, new_cls.mod == jax)
-                res = run() if benchmark is None else benchmark(run)
+                res = benchmark(run)
                 np.testing.assert_allclose(res, ref_dict[test], rtol=RTOL)
-
-            if new_cls.mode == "benchmark":
-
-                @pytest.mark.benchmark
-                def test_method(self, data_bundle, benchmark):
-                    _test_method(self, data_bundle, benchmark=benchmark)
-
-            else:
-
-                @pytest.mark.unittest
-                def test_method(self, data_bundle):
-                    _test_method(self, data_bundle)
 
             test_method.__name__ = f"test_{test}_{mod_name}"
             return test_method
@@ -654,42 +642,29 @@ class AutoTestMeta(type):
 
 
 # Example usage in a TestCase
+class TestOriginal(metaclass=AutoTestMeta):
+    mod = original
+
+
 class TestNumba(metaclass=AutoTestMeta):
     mod = numba
-    mode = "unittest"
 
 
 class TestJax(metaclass=AutoTestMeta):
     mod = jax
-    mode = "unittest"
-
-
-class TestBenchOriginal(metaclass=AutoTestMeta):
-    mod = original
-    mode = "benchmark"
-
-
-class TestBenchNumba(metaclass=AutoTestMeta):
-    mod = numba
-    mode = "benchmark"
-
-
-class TestBenchJax(metaclass=AutoTestMeta):
-    mod = jax
-    mode = "benchmark"
 
 
 # special case
 
 
-class TestBenchWTilde:
+class TestWTilde:
     """Compute w_tilde via various methods.
 
     This adds on top of existing benchmarks to compare the performance of the preload method.
 
     The test names are a bit strange, but is designed to be filtered like this:
 
-        pytest -m benchmark -k w_tilde_curvature_interferometer_from
+        pytest -k w_tilde_curvature_interferometer_from
 
     This compares
 
@@ -790,7 +765,7 @@ class TestBenchWTilde:
         np.testing.assert_allclose(res, ref.ref["w_tilde_curvature_interferometer_from"], rtol=RTOL)
 
 
-class TestBenchCurvatureMatrix:
+class TestCurvatureMatrix:
     """Compute curvature matrix via various methods.
 
     The input w can be w_tilde, preload, or compact. w_tilde is allowed
