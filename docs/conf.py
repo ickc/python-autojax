@@ -20,7 +20,7 @@ extensions = [
     "myst_parser",
     "sphinx_last_updated_by_git",
 ]
-source_suffix = [".md", ".rst"]
+source_suffix = {'.md': 'markdown', '.rst': 'restructuredtext'}
 # https://github.com/mgeier/sphinx-last-updated-by-git/issues/40
 needs_sphinx = "5.2"
 pygments_style = "solarized-light"
