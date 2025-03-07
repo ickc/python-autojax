@@ -27,17 +27,18 @@ linkify-it-py = "*"
 myst-parser = "*"
 sphinx = "*"
 sphinx-autobuild = "*"
-sphinxcontrib-apidoc = "*"
 pygal = ">=3.0.5,<4"
 defopt = ">=6.4.0,<7"
 ipykernel = ">=6.29.5,<7"
 
 [pypi-dependencies]
 sphinx-last-updated-by-git = "*"
+sphinxcontrib-apidoc = ">=0.5.0,<1"
 autojax = { path = ".", editable = true}
 
 [feature.cuda]
 system-requirements = {cuda = "12"}
+platforms = ["linux-64"]
 
 [feature.cuda.target.linux-64.dependencies]
 jaxlib = { version = "*", build = "*cuda*" }
