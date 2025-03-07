@@ -8,7 +8,7 @@ import defopt
 def gen_batch(
     *,
     template_path: Path = Path(__file__).parent / "batch.template.bash",
-    num_threads: int = 96,
+    num_threads: int = 256,
     grid_size: int = 30,
     n_mapping_neighbors: int = 3,
     data_size: int = 1024,
