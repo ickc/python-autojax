@@ -7,5 +7,5 @@ api/modules
 changelog
 ```
 
-```{include} ../README.md
+```{include} README.md
 ```
