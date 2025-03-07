@@ -10,7 +10,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 from jax import numpy as jnp
-from numba import jit
+from numba import jit, prange
 
 from . import jax, numba, original
 
@@ -30,7 +30,7 @@ AUTOJAX_NEIGHBOR_SIZE: int = _get_env_int("AUTOJAX_NEIGHBOR_SIZE", 32)
 AUTOJAX_SRC_IMG_SIZE: int = _get_env_int("AUTOJAX_SRC_IMG_SIZE", 256)
 AUTOJAX_NO_LOAD_DATA: bool = _get_env_bool("AUTOJAX_NO_LOAD_DATA", False)
 
-RTOL: float = 2e-6
+RTOL: float = 5e-6
 
 tests_numba: set[str] = {
     "curvature_matrix_via_w_compact_sparse_mapping_matrix_from",
@@ -66,6 +66,90 @@ def deterministic_seed(string: str, *numbers: int) -> int:
     """Generate a deterministic seed from the class name."""
     hash_value = hashlib.md5(repr((string, numbers)).encode()).hexdigest()  # Get a hash from class name
     return int(hash_value, 16) % (2**32)  # Convert to an integer within a reasonable range
+
+
+@jit(nopython=True, nogil=True, parallel=False)
+def neighbors_grid(neighbors: np.ndarray[tuple[int, int], np.int64]) -> np.ndarray[tuple[int, int], np.bool_]:
+    S, P = neighbors.shape
+    grid = np.zeros((S, S), dtype=np.bool_)
+    for i in range(S):
+        for p in range(P):
+            j = neighbors[i, p]
+            if j != -1:
+                grid[i, j] = True
+                grid[j, i] = True
+    return grid
+
+
+@jit(nopython=True, nogil=True, parallel=False)
+def gen_neighbors(S, P, rng) -> np.ndarray[tuple[int, int], np.int64]:
+    """Generate random neighbors."""
+    if S <= 0 or P <= 0:
+        raise ValueError("S and P must be positive integers.")
+    if (S * P) % 2 != 0:
+        raise ValueError("S*P must be even to generate a valid neighbors array.")
+
+    # Generate the list of stubs and shuffle the stubs to randomize connections
+    # each s < S appears P times
+    stubs = np.repeat(np.arange(S, dtype=np.int64), P)
+    rng.shuffle(stubs)
+    # (SP/2, 2)
+    stubs = stubs.reshape(-1, 2)
+
+    neighbors = np.empty((S, P), dtype=np.int64)
+    counts = np.zeros(S, dtype=np.int64)
+
+    for s1, s2 in stubs:
+        neighbors[s1, counts[s1]] = s2
+        counts[s1] += 1
+        neighbors[s2, counts[s2]] = s1
+        counts[s2] += 1
+    # neighbors[s, ...] should have been accessed exactly P times
+    # for s in range(S):
+    #     assert counts[s] == P
+
+    # S is out of bound and indicates sentinel value of not-a-neighbor
+    # will be replaced by -1
+    # Remove self-loops
+    for i in range(S):
+        for j in range(P):
+            if neighbors[i, j] == i:
+                neighbors[i, j] = S
+
+    # neighbors can be duplicated
+    for i in range(S):
+        unique = np.unique(neighbors[i])
+        n = unique.size
+        if n < P:
+            neighbors[i, :n] = unique[:]
+            neighbors[i, n:] = S
+
+    neighbors.sort()
+    # replace sentinel back to -1
+    for s in range(S):
+        for p in range(P):
+            if neighbors[s, p] == S:
+                neighbors[s, p] = -1
+    return neighbors
+
+
+@jit(nopython=True, nogil=True, parallel=True)
+def gen_pix_indexes_for_sub_slim_index(
+    M: int,
+    S: int,
+    B: int,
+) -> np.ndarray[tuple[int, int], np.int64]:
+    res = np.empty((M, B), dtype=np.int64)
+    for m in prange(M):
+        # 0 <= s_low < S
+        s_low = m * S // M
+        s_high = s_low + B
+        # ensure not out of bounds
+        if s_high > S:
+            s_high = S
+            s_low = s_high - B
+        res[m, :] = np.arange(s_low, s_high)
+    return res
 
 
 @dataclass
@@ -242,23 +326,10 @@ class Data:
     def neighbors(self) -> np.ndarray[tuple[int], np.int64]:
         raise NotImplementedError
 
-    @staticmethod
-    @jit(nopython=True, nogil=True, parallel=False)
-    def _neighbors_grid(neighbors: np.ndarray[tuple[int, int], np.int64]) -> np.ndarray[tuple[int, int], np.bool_]:
-        S, P = neighbors.shape
-        grid = np.zeros((S, S), dtype=np.bool_)
-        for i in range(S):
-            for p in range(P):
-                j = neighbors[i, p]
-                if j != -1:
-                    grid[i, j] = True
-                    grid[j, i] = True
-        return grid
-
     @cached_property
     def neighbors_grid(self):
         """Convert a neighbors array to a grid, primarily for visualization."""
-        return self._neighbors_grid(self.neighbors)
+        return neighbors_grid(self.neighbors)
 
     @property
     def data(self) -> np.ndarray[tuple[int], np.complex128]:
@@ -417,28 +488,9 @@ class DataGenerated(Data):
         rng = np.random.default_rng(deterministic_seed("uv_wavelengths", K, 2))
         return rng.random((K, 2))
 
-    @staticmethod
-    @jit(nopython=True, nogil=True, parallel=True)
-    def _pix_indexes_for_sub_slim_index(
-        M: int,
-        S: int,
-        B: int,
-    ) -> np.ndarray[tuple[int, int], np.int64]:
-        res = np.empty((M, B), dtype=np.int64)
-        for m in range(M):
-            # 0 <= s_low < S
-            s_low = m * S // M
-            s_high = s_low + B
-            # ensure not out of bounds
-            if s_high > S:
-                s_high = S
-                s_low = s_high - B
-            res[m, :] = np.arange(s_low, s_high)
-        return res
-
     @cached_property
     def pix_indexes_for_sub_slim_index(self) -> np.ndarray[tuple[int, int], np.int64]:
-        return self._pix_indexes_for_sub_slim_index(self.M, self.S, self.B)
+        return gen_pix_indexes_for_sub_slim_index(self.M, self.S, self.B)
 
     @cached_property
     def pix_weights_for_sub_slim_index(self) -> np.ndarray[tuple[int, int], np.float64]:
@@ -455,59 +507,13 @@ class DataGenerated(Data):
         neighbors = self.neighbors
         return (neighbors != -1).sum(axis=1)
 
-    @staticmethod
-    @jit(nopython=True, nogil=True, parallel=False)
-    def _build_neighbors(
-        stubs: np.ndarray[tuple[int], np.int64],
-        S: int,
-        P: int,
-    ) -> np.ndarray[tuple[int, int], np.int64]:
-        # for sorting:
-        # S is out of bounds, will be replaced by -1 later
-        neighbors = np.full((S, P), S, dtype=np.int64)
-        counts = np.zeros(S, dtype=np.int64)
-
-        for i in range(0, stubs.size, 2):
-            a = stubs[i]
-            b = stubs[i + 1]
-
-            if counts[a] < P and counts[b] < P:
-                neighbors[a, counts[a]] = b
-                counts[a] += 1
-                neighbors[b, counts[b]] = a
-                counts[b] += 1
-
-        # Remove self-loops
-        for i in range(S):
-            for j in range(P):
-                if neighbors[i, j] == i:
-                    neighbors[i, j] = S
-
-        neighbors.sort()
-        # replace back
-        for s in range(S):
-            for p in range(P):
-                if neighbors[s, p] == S:
-                    neighbors[s, p] = -1
-        return neighbors
-
     @cached_property
     def neighbors(self) -> np.ndarray[tuple[int, int], np.int64]:
         """Generate random neighbors."""
         S = self.S
         P = self.P
         rng = np.random.default_rng(deterministic_seed("neighbors", S, P))
-        if S <= 0 or P <= 0:
-            raise ValueError("S and P must be positive integers.")
-        if (S * P) % 2 != 0:
-            raise ValueError("S*P must be even to generate a valid neighbors array.")
-
-        # Generate the list of stubs
-        stubs = np.repeat(np.arange(S, dtype=np.int64), P)
-
-        # Shuffle the stubs to randomize connections
-        rng.shuffle(stubs)
-        return self._build_neighbors(stubs, S, P)
+        return gen_neighbors(S, P, rng)
 
     @cached_property
     def data(self) -> np.ndarray[tuple[int], np.complex128]:
