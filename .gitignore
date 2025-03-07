@@ -6,6 +6,8 @@ docs/api/
 root.log
 *.svg
 *.csv
+*.err
+*.out
 
 .benchmarks/
 batch/*.sh
