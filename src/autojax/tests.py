@@ -676,7 +676,7 @@ class TestWTilde:
     """
 
     @pytest.mark.benchmark
-    def test_w_tilde_curvature_interferometer_original_preload(self, data_bundle, benchmark):
+    def test_w_tilde_curvature_interferometer_from_original_preload(self, data_bundle, benchmark):
         data, _, _ = data_bundle
         data_dict = data.dict()
 
