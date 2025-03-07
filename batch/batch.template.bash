@@ -1,12 +1,14 @@
 #!/bin/bash -l
 
-#SBATCH -N 1
-#SBATCH -J autojax-bench-{name}
-#SBATCH -o batch/{name}.%J.out
-#SBATCH -e batch/{name}.%J.err
-#SBATCH -p mi300x
-#SBATCH -A do018
-#SBATCH -t 2:00:00
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=256
+#SBATCH --job-name=autojax-bench-{name}
+#SBATCH --output=batch/{name}.%J.out
+#SBATCH --error=batch/{name}.%J.err
+#SBATCH --partition=cosma5
+#SBATCH --account=durham
+#SBATCH --time=72:00:00
 
 # set no. of threads ###########################################################
 
@@ -31,7 +33,6 @@ export TF_NUM_INTRAOP_THREADS={num_threads}
 
 # set generated data sizes #####################################################
 
-export AUTOJAX_NO_LOAD_DATA=1
 # N
 export AUTOJAX_GRID_SIZE={grid_size}
 # B
@@ -45,4 +46,4 @@ export AUTOJAX_SRC_IMG_SIZE={src_img_size}
 
 # run pytest ###################################################################
 
-pytest --benchmark-save={name} -vv -k "TestBenchWTilde or TestBenchCurvatureMatrix"
+pytest --benchmark-save={name} -vv -k 'DataGenerated'

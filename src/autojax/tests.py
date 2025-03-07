@@ -28,7 +28,6 @@ AUTOJAX_N_MAPPING_NEIGHBORS: int = _get_env_int("AUTOJAX_N_MAPPING_NEIGHBORS", 3
 AUTOJAX_DATA_SIZE: int = _get_env_int("AUTOJAX_DATA_SIZE", 1024)
 AUTOJAX_NEIGHBOR_SIZE: int = _get_env_int("AUTOJAX_NEIGHBOR_SIZE", 32)
 AUTOJAX_SRC_IMG_SIZE: int = _get_env_int("AUTOJAX_SRC_IMG_SIZE", 256)
-AUTOJAX_NO_LOAD_DATA: bool = _get_env_bool("AUTOJAX_NO_LOAD_DATA", False)
 
 RTOL: float = 5e-6
 
@@ -551,7 +550,7 @@ class Reference:
 
 
 @pytest.fixture(
-    params=(DataGenerated,) if AUTOJAX_NO_LOAD_DATA else (DataLoaded, DataGenerated),
+    params=(DataLoaded, DataGenerated),
     scope="module",
 )
 def data_bundle(request):
