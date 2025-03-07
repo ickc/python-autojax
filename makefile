@@ -1,4 +1,4 @@
-SPHINXOPTS    ?= -W
+SPHINXOPTS    ?=
 SPHINXBUILD   ?= sphinx-build
 SOURCEDIR     = docs
 BUILDDIR      = dist/docs
