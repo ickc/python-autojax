@@ -252,3 +252,111 @@ TODO: expand this section
 - `static_argnums`
 - multithreading on CPU with JAX
 - The "internal sparse matrix representation" in PyAutoArray such as `neighbors`, `pix_indexes_for_sub_slim_index` and their implications with JAX.
+
+### `static_argnums`
+
+Beware that it can backfire as any changes requires a recompilation.
+
+One pattern to use in this kind of situation is closure, where an example is in {py:class}`autojax.jax.w_compact_curvature_interferometer_from`. (This is a good closure example but not specifically related to removing `static_argnums`.) This kind of pattern is useful if you write a certain function that you know will not be used in other places (i.e. a private function), and you can instead define it locally inside a bigger public function, Here you can see that `δ_mn0` is created and used in the inner private function.
+
+## Numba vs. JAX
+
+### Should Numba be dropped completely?
+
+Regarding the dependencies on Numba and JAX in general, I think removing Numba as a dependency is not necessary and may be harmful in some cases. In autojax, numba and JAX live happily alongside each other as long as the import are done correctly (e.g. no `import jax.numpy as np` to mixes `np` and `jnp`).
+
+There are these kinds of situations
+
+1. application hotspots that you optimize as much as you can
+2. essential functions that you need, and is sufficient as long as it is not too slow. It can be either
+    1. implemented in Numba
+    1. implemented in pure Numpy
+
+It sounds like (1) is definitely going to be ported from Numba to JAX.
+
+The problem of completely dropping Numba from anywhere in the codebase is you need to deal with (2.1). I.e. you either port it to JAX (1), or write it in a pure Numpy way (2.2). Either way it can takes non-trivial amount of time, and might actually be slower (as shown in the benchmark here). Just to reiterate, even if you `numba.jit` a function that work perfectly in pure Numpy, you can get huge speed up by putting it inside `numba.jit` because of the Python object model leading to inefficiency in pure Numpy operation. (E.g. Consider `X = A @ B + C`, the intermediate Python object `A @ B` are created, which can be avoided when jitted. That by the way is why NumExpr exists for this specialty case.)
+
+A random example is in {py:class}`autojax.tests.gen_neighbors`. Here I need to generate mock neighbors array with suitable property. It is only needed when I run test and benchmark, so it doesn't have to be super-fast (i.e. it is not in the (1) case), but it is not obvious how to do (2.2), and pure Python is too slow even for the purpose of testing. So numba-jit (2.1) in this case is no-brainer and save a lot of time in both developing and running tests.
+
+While this particular example is a unit test and hence Numba can be made an optional dependency, it is highly likely that there exists some examples in the core functionality that you encounter this too.
+
+### Performance between them on a single CPU core
+
+Assuming comparing features where they overlap, and focusing only on a single CPU core,
+my assertion would be that it is, on average impossible for a JAX implementation to be meaningfully faster than a Numba implementation.
+It is because
+
+1. An algorithm one can express in JAX can equally be expressed in Numba, but not the other way around.
+2. And if (1) is true, then even if we only focus on the subset of algorithms that can equally be expressed in JAX and Numba, any performance difference will then be due to the compilers, and the hints the language can passes more to the compiler. This is in similar situation with comparing C/C++, Fortran, Julia, etc. While there are differences, they are O(1) in speed between each other. While the XLA compiler is interesting in the sense that it compiles specifically for a given shape of array, the compiler can have more hints (on top of knowing the exact CPU architecture at run time similar to Numba and Julia) to optimize the loops and chunks given the shape, fundamentally it cannot beats other compilers much further. For example, XLA on the CPU actually delegates to LLVM compiler eventually, similar to Numba and Julia.
+
+Of the cases I see JAX beats Numba in `autojax`, usually it is either simple linear algebra or vectorized operations. That’s probably the case where the `jnp.array` and `jax.jit` optimized with the shape information (and/or memory alignment too).
+In all other cases, the Numba implementation easily beats the JAX’s, basically because the Numba algorithm cannot be effectively expressed in JAX, so that the JAX version while looks like doing similar thing, but has additional costs such as creating some array in memory.
+
+Note that we are talking about same algorithm implemented in different framework.
+But one reason people can see huge speedup after porting it to JAX is that the JAX programming paradigm (functional, vectorized, static shape, etc.) forces you to write in a way that is efficient (i.e. it forces you to change the algorithm).
+Another aspect JAX excels at is the kind of high level, automatic optimization it will do for you such as fusions of operations.
+It can be done by hand in other languages including Numba but can be tedious. (In this aspect, JAX is actually changing your algorithm behind the scene.) But on the other hand, fusion is automagic which is difficult to foresee if it will happen. In one case in `autojax`, I anticipated it should happen but it actually doesn’t. But in Numba you can control that directly.
+
+My bet is that in these cases, if you backport the algorithm change and implement it in Numba as well, it would results in huge speedup too.
+That’s the case comparing `original` and `numba` in autojax, as `original` is also implemented in Numba. And in most cases the reimplementation makes it much faster than `original` in my benchmark.
+
+To conclude, frameworks differences make something easy in one but difficult in another. JAX has its benefits in many regards. E.g. there can be optimization by JAX behind the scene that is too tiresome to perform in Numba. My point above is essentially, for the cases where a `numba` implementation in `autojax` is faster than the `jax` equivalent on a single core, for most of them you’ll never be able to flip it around by further optimization.
+
+It is another matter for multiple CPU cores though... More on that later.
+
+## Beyond porting
+
+Some thoughts on the architecture of the parent libraries as they evolve with this porting effort, which can be subjective:
+
+Avoid automagic such as runtime import check and dispatch your `jit` to `numba.jit` vs. `jax.jit`, or `numpy` vs. `jax.numpy`. This can leads to unexpected behavior at best. You could do sensible defaults, but the difference between that and automagic is, automagic tries to make decision for the users hiding the details, but sensible defaults are, making defaults that is sensible but also giving the user controls. E.g. `DEFAULT_JIT = numba|jax`, `ARRAY_CONVERSION = ALWAYS_NUMPY|ALWAYS_JAX|NEVER`. This also makes your code less stateful and hence easier to reason with.
+
+Treating the “library code” that does the computation and the end user facing interface such as classes separately.
+Here the “library code” means something like a lib implemented in whatever language, be it C/C++/Numba/JAX/Julia, and then you have your interface calling them eventually. It decouples your implementation details from the interface, with the disadvantage that there’s more rabbit holes to go through. With the example of `autojax`, you can do something like this illustrative pseudo code:
+
+```py
+import os
+
+import autojax
+
+DEFAULT_JIT = os.environ.get("DEFAULT_JIT", "jax")  # or some sort of config
+LUT = {
+    "jax": autojax.jax,
+    "numba": autojax.numba,
+}
+FALLBACK_MOD = autojax.numba
+...
+
+
+class SomethingLikeThis:
+    mode: str = DEFAULT_JIT
+    ...
+
+    @property
+    def mod(self):
+        try:
+            return LUT[self.mode]
+        except KeyError:
+            ...
+
+    def mask(self):
+        mask_2d_circular_from = getattr(self.mod, "mask_2d_circular_from", None)
+        # fall back to Numba if no JAX implementation is around
+        if mask_2d_circular_from is None:
+            mask_2d_circular_from = getattr(FALLBACK_MOD, "mask_2d_circular_from")
+        # you can even do more metaprogramming to auto-retrieve these args, see autojax.tests for example
+        shape_native = getattr(self, ...)
+        return mask_2d_circular_from(shape_native, ...)
+...
+
+# then end-user can actually also have control:
+something = SomethingLikeThis(mode="numba")
+# or this can be passed around in various ways to the interface that the user control...
+```
+
+Here the library is also dealing with simple input types/classes, i.e. avoid the need of subclassing which might couples your implementation details (such as `np` vs. `jnp`) to your interface (such as the attributes that it presents.)
+
+Porting the majority of the codebase from Numba to JAX is complicated, especially with these couplings.
+But it is possible that with this restructuring, you could make the porting more manageable.
+It could be manageable to the point that keeping 2 implementations around is easy, and in that case you can “have your cake and eat it too”.
+
+One final remark is, you could flip everything around and refactor everything into `autojax` and then have your libraries calling `autojax` this way... But of course that’s independent to the architectural suggestion above.
