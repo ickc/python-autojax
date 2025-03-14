@@ -168,7 +168,7 @@ and then expanded it to $\tilde{w}$ in memory.
 This illustrates that even if the end goal is to calculate $\tilde{w}$ in memory,
 it is still much faster to get w-compact as an intermediate step.
 
-:::{Takeaway}
+:::{Hint}
 Always calculate w-compact first, regardless what you're going to do next in the next section.
 :::
 
