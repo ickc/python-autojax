@@ -891,8 +891,6 @@ def log_likelihood_function_via_w_compact_from(
         The complex interferometer data being fitted
     noise_map : ndarray, shape (K,), dtype=complex128
         The complex noise map of the data
-    uv_wavelengths : ndarray, shape (K, 2), dtype=float64
-        The wavelengths of the coordinates in the uv-plane for the interferometer dataset
     grid_radians_slim : ndarray, shape (M, 2), dtype=float64
         The 1D (y,x) grid of coordinates in radians corresponding to real-space mask
     pix_indexes_for_sub_slim_index : ndarray, shape (M, B), dtype=int64
