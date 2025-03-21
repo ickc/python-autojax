@@ -2,13 +2,13 @@
 
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=256
+#SBATCH --cpus-per-task=128
 #SBATCH --job-name=autojax-bench-{name}
 #SBATCH --output=batch/{name}.%J.out
 #SBATCH --error=batch/{name}.%J.err
-#SBATCH --partition=cosma5
-#SBATCH --account=durham
-#SBATCH --time=72:00:00
+#SBATCH --partition=cosma8-shm
+#SBATCH --account=dr004
+#SBATCH --time=3-00:00:00
 
 # set no. of threads ###########################################################
 
