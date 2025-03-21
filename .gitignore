@@ -10,7 +10,7 @@ root.log
 *.out
 
 .benchmarks/
-batch/*.sh
+batch/**/*.sh
 
 # pixi environments
 .pixi
