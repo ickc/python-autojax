@@ -243,7 +243,7 @@ Finally, there are `test_curvature_matrix_jax_compact_sparse_BCOO` and `test_cur
 
 ## Experiments
 
-Under `experiments/`, there is a set of experiments, under the framework of JAX, testing various ways to perform reduced sum over vector(s) of length $K$ without expanding to higher dimensional N-D arrays that consumes memory proportional to $K$. Head over to `experiments/README.md` to see the conclusion there. Based on that study, `scan` is used to ensure none of the intermediate memory use scales as `K` (the number of visibilities).
+Under `experiments/`, there is a set of experiments, under the framework of JAX, testing various ways to perform reduced sum over vector(s) of length $K$ without expanding to higher dimensional N-D arrays that consumes memory proportional to $K$. Head over to [`experiments/README.md`](../experiments/README.md) to see the conclusion there. Based on that study, `scan` is used to ensure none of the intermediate memory use scales as `K` (the number of visibilities).
 
 ## 🔪 The Sharp Bits 🔪
 
