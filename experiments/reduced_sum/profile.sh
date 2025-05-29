@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -e
+
 M=8192
 
 : > profile_${M}.log
@@ -17,8 +19,8 @@ for K in 8192 16384 32768; do
         jax_vmap \
         jax_fori \
         jax_scan; do
-        echo "=========== ${case} M=${M}, K=${K}, NUM_THREADS=-1 ==========="
-        command time -v ipython profile_${case}.py ${M} ${K} 2>&1 >> profile_${M}.log
+        echo "=========== ${case} M=${M}, K=${K}, NUM_THREADS=-1 ===========" >> profile_${M}.log
+        command time -v ipython profile_${case}.py ${M} ${K} &>> profile_${M}.log
     done
 done
 
@@ -46,8 +48,8 @@ for NUM_THREADS in 1 2 4 8 10 14; do
             numba_parallel \
             numba_fori \
             numba_fori_parallel; do
-            echo "=========== ${case} M=${M}, K=${K}, NUM_THREADS=${NUM_THREADS} ==========="
-            command time -v ipython profile_${case}.py ${M} ${K} 2>&1 >> profile_${M}.log
+            echo "=========== ${case} M=${M}, K=${K}, NUM_THREADS=${NUM_THREADS} ===========" >> profile_${M}.log
+            command time -v ipython profile_${case}.py ${M} ${K} &>> profile_${M}.log
         done
     done
 done
@@ -80,8 +82,8 @@ for NUM_THREADS in 1 2 4 8 10 14; do
             jax_vmap \
             jax_fori \
             jax_scan; do
-            echo "=========== ${case} M=${M}, K=${K}, NUM_THREADS=${NUM_THREADS} ==========="
-            command time -v ipython profile_${case}.py ${M} ${K} 2>&1 >> profile_${M}.log
+            echo "=========== ${case} M=${M}, K=${K}, NUM_THREADS=${NUM_THREADS} ===========" >> profile_${M}.log
+            command time -v ipython profile_${case}.py ${M} ${K} &>> profile_${M}.log
         done
     done
 done
@@ -114,8 +116,8 @@ for NUM_THREADS in 1 2 4 8 10 14; do
             jax_vmap \
             jax_fori \
             jax_scan; do
-            echo "=========== ${case}_all_cpu_devices M=${M}, K=${K}, NUM_THREADS=${NUM_THREADS} ==========="
-            command time -v ipython profile_${case}.py ${M} ${K} 2>&1 >> profile_${M}.log
+            echo "=========== ${case}_all_cpu_devices M=${M}, K=${K}, NUM_THREADS=${NUM_THREADS} ===========" >> profile_${M}.log
+            command time -v ipython profile_${case}.py ${M} ${K} &>> profile_${M}.log
         done
     done
 done
