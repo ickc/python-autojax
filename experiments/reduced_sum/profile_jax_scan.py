@@ -16,7 +16,7 @@ def f(
     k2: np.ndarray[tuple[int], np.float64],
 ) -> np.ndarray[tuple[int], np.float64]:
     """
-    memory used: MK
+    memory used: M
     FLOPS: 4MK
     """
 
