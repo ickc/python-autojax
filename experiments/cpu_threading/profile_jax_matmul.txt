@@ -1,0 +1,8 @@
+=========== JAX    M=1024, N=1024, K=1024, NUM_THREADS=None ===========
+4.41 ms ± 30.1 µs per loop (mean ± std. dev. of 7 runs, 100 loops each)
+=========== JAX    M=1024, N=1024, K=1024, https://github.com/jax-ml/jax/issues/743#issuecomment-511684879 ===========
+4.38 ms ± 22.2 µs per loop (mean ± std. dev. of 7 runs, 100 loops each)
+=========== JAX    M=1024, N=1024, K=1024, NUM_THREADS=1 ===========
+35.5 ms ± 115 µs per loop (mean ± std. dev. of 7 runs, 10 loops each)
+=========== JAX    M=1024, N=1024, K=1024, NUM_THREADS=14 ===========
+4.57 ms ± 261 µs per loop (mean ± std. dev. of 7 runs, 100 loops each)

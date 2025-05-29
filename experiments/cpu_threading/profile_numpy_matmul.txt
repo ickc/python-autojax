@@ -1,0 +1,14 @@
+=========== Numpy    M=1024, N=1024, K=1024, NUM_THREADS=None ===========
+8.71 ms ± 194 µs per loop (mean ± std. dev. of 7 runs, 100 loops each)
+=========== Numpy    M=1024, N=1024, K=1024, NUM_THREADS=1 ===========
+37.1 ms ± 588 µs per loop (mean ± std. dev. of 7 runs, 10 loops each)
+=========== Numpy    M=1024, N=1024, K=1024, NUM_THREADS=2 ===========
+19.5 ms ± 127 µs per loop (mean ± std. dev. of 7 runs, 100 loops each)
+=========== Numpy    M=1024, N=1024, K=1024, NUM_THREADS=4 ===========
+10.3 ms ± 35.5 µs per loop (mean ± std. dev. of 7 runs, 100 loops each)
+=========== Numpy    M=1024, N=1024, K=1024, NUM_THREADS=8 ===========
+5.88 ms ± 74.2 µs per loop (mean ± std. dev. of 7 runs, 100 loops each)
+=========== Numpy    M=1024, N=1024, K=1024, NUM_THREADS=10 ===========
+5.68 ms ± 99.7 µs per loop (mean ± std. dev. of 7 runs, 100 loops each)
+=========== Numpy    M=1024, N=1024, K=1024, NUM_THREADS=14 ===========
+10.9 ms ± 1.45 ms per loop (mean ± std. dev. of 7 runs, 100 loops each)
