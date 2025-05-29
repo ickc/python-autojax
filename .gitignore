@@ -8,6 +8,7 @@ root.log
 *.csv
 *.err
 *.out
+*.log
 
 .benchmarks/
 batch/**/*.sh
