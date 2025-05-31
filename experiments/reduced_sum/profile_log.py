@@ -148,6 +148,7 @@ with open("profile_8192.log", "r") as f:
 # %%
 df.set_index(["name", "M", "K", "NUM_THREADS"], inplace=True)
 df["s"] = df["s"].dt.total_seconds()
+df["ds"] = df["ds"].dt.total_seconds()
 
 # %%
 df[["s", "Percent of CPU this job got", "Maximum resident set size (kbytes)"]]
@@ -165,7 +166,7 @@ df["s"].droplevel(1).unstack((1, 2))
 import plotly.express as px
 
 # %%
-df_plot = df["s"].droplevel(1).reset_index()
+df_plot = df[["s", "ds"]].droplevel(1).reset_index()
 df_plot.head()
 
 # %%
@@ -173,6 +174,7 @@ px.line(
     df_plot,
     x="NUM_THREADS",  # or whatever you want on x-axis
     y="s",  # your Series values
+    error_y="ds",
     color="name",
     facet_col="K",
     log_y=True,
