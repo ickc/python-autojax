@@ -45,7 +45,7 @@ def run(
 
 def main() -> None:
     if len(sys.argv) != 3:
-        print(f"Usage: {sys.argv[0]} PATH1 PATH2", file=sys.stderr)
+        print(f"Usage: {sys.argv[0]} M K", file=sys.stderr)
         sys.exit(1)
     run(int(sys.argv[1]), int(sys.argv[2]))
 
