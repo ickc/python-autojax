@@ -45,7 +45,7 @@ def parse_log_to_dataframe(log_content: str) -> pd.DataFrame:
     # Updated timing_pattern to handle "loop" or "loops"
     timing_pattern = re.compile(
         r"([\d.]+) (µs|ms|s) ± ([\d.]+) (µs|ms|s) per loop "
-        r"\(mean ± std\. dev\. of (\d+) runs, (\d+) loop(?:s)? each\)"  # Fixed "loops" to "loop(?:s)?"
+        r"mean±std\.dev\.of(\d+)runs,(\d+)loop(?:s)?eachmean ± std\. dev\. of (\d+) runs, (\d+) loop(?:s)? each"  # Fixed "loops" to "loop(?:s)?"
     )
     kv_pattern = re.compile(r"\t([^:]+):\s*(.*)")
 
