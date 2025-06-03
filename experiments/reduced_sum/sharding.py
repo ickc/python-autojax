@@ -18,16 +18,16 @@ from __future__ import annotations
 import jax
 import jax.numpy as jnp
 import numpy as np
-
-# %%
-N = 10
+from jax.sharding import Mesh, PartitionSpec
 
 # %%
 jax.config.update("jax_enable_x64", True)
-jax.config.update("jax_num_cpu_devices", N)
 
 # %%
+N = 10
+jax.config.update("jax_num_cpu_devices", N)
 assert jax.device_count() == N
+devices = jax.devices()
 
 
 # %%
@@ -62,15 +62,12 @@ jax.debug.visualize_array_sharding(k1)
 f(m, k1, k2).block_until_ready()
 
 # %%
-mesh = jax.make_mesh((N,), ("x",))
+# mesh = jax.make_mesh((N,), ("x",))
+mesh = Mesh(devices, axis_names=("i",))
 mesh
 
 # %%
-from jax.sharding import PartitionSpec as P
-
-sharding = jax.sharding.NamedSharding(mesh, P("x"))
-
-# %%
+sharding = jax.sharding.NamedSharding(mesh, PartitionSpec("i"))
 sharding
 
 # %%
@@ -83,3 +80,17 @@ jax.debug.visualize_array_sharding(k1_sharded)
 # %%
 # %%timeit
 f(m, k1_sharded, k2_sharded).block_until_ready()
+
+# %%
+sharding_all = jax.sharding.NamedSharding(mesh, PartitionSpec())
+sharding_all
+
+# %%
+m_sharded = jax.device_put(m, sharding_all)
+
+# %%
+jax.debug.visualize_array_sharding(m_sharded)
+
+# %%
+# %%timeit
+f(m_sharded, k1_sharded, k2_sharded).block_until_ready()
